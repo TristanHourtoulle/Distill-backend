@@ -4,9 +4,9 @@
 
 ## État actuel
 
-**Phase en cours :** Phase 4 — Agent d'analyse
+**Phase en cours :** Phase 5 — Export
 **Dernière mise à jour :** 18 Dec 2025
-**Prochaine tâche :** Tâche 4.6 — Routes agent
+**Prochaine tâche :** Tâche 5.1 — Service export GitHub Issues
 
 ---
 
@@ -98,7 +98,7 @@
 | 4.3 — Orchestrator (boucle agent)    | ✅     | 18 Dec 2025 | Agent loop with tool execution  |
 | 4.4 — Prompts système                | ✅     | 18 Dec 2025 | System prompt builder           |
 | 4.5 — Parsing résultats              | ✅     | 18 Dec 2025 | JSON extraction + defaults      |
-| 4.6 — Routes agent                   | ⏳     | -           | -                               |
+| 4.6 — Routes agent                   | ✅     | 18 Dec 2025 | AnalysisService + REST endpoints |
 
 ### Phase 4 files
 
@@ -110,6 +110,8 @@
 - `src/agent/tools/index.ts` ✅ (Tool executor)
 - `src/agent/prompts.ts` ✅ (System prompts)
 - `src/agent/orchestrator.ts` ✅ (Agent loop)
+- `src/services/analysis.service.ts` ✅ (Analysis business logic)
+- `src/routes/agent.routes.ts` ✅ (Agent REST endpoints)
 
 ---
 
@@ -157,3 +159,4 @@
 | 18 Dec 2025 | ComplexityService, TaskService, tasks routes   | Phase 3 complete             |
 | 18 Dec 2025 | Agent tools: list_dir, read_file, search, imports | Agent tools ready       |
 | 18 Dec 2025 | Prompts, orchestrator, Claude function calling | Agent core complete       |
+| 18 Dec 2025 | AnalysisService, agent routes                  | Phase 4 complete          |
