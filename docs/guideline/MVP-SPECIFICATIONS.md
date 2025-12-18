@@ -95,29 +95,44 @@ Développeurs freelances et petites équipes qui :
 
 ## Stack technique
 
-### Frontend
-- **Framework** : Next.js 14+ (App Router)
+### Architecture
+
+L'application est divisée en deux repos séparés :
+
+```
+┌─────────────────┐         ┌─────────────────┐
+│                 │         │                 │
+│  Distill-web    │◄───────►│  Distill-api    │
+│  (Frontend)     │  REST   │  (Backend)      │
+│                 │         │                 │
+└─────────────────┘         └─────────────────┘
+```
+
+### Frontend (Distill-website)
+
+- **Framework** : Next.js 15+ (App Router)
 - **Langage** : TypeScript
 - **Styling** : Tailwind CSS
-- **État** : Zustand
+- **État global** : Zustand
+- **État serveur** : TanStack Query
 - **Formulaires** : React Hook Form + Zod
-- **Requêtes** : TanStack Query
 - **Icônes** : Heroicons (@heroicons/react)
+- **Auth (client)** : BetterAuth client
 - **Composants** : Custom (pas de librairie UI externe)
 
-> ⚠️ **Note importante** : Nous créons nos propres composants UI from scratch. Pas de shadcn/ui, Radix, ou autre librairie de composants. Cela garantit un contrôle total sur le design et évite les dépendances inutiles.
+> ⚠️ **Note importante** : Nous créons nos propres composants UI from scratch. Pas de shadcn/ui, Radix, ou autre librairie de composants.
 
-### Backend
-- **Runtime** : Node.js (via Next.js API Routes)
+### Backend (Distill-api)
+
+- **Runtime** : Node.js 20+
+- **Framework** : Hono
+- **Langage** : TypeScript
 - **ORM** : Prisma
 - **Base de données** : PostgreSQL
-- **Auth** : NextAuth.js (GitHub provider)
+- **Auth** : BetterAuth (server)
+- **Validation** : Zod
 - **LLM** : Claude API (Anthropic)
-- **File storage** : Local filesystem ou S3 (pour les résumés uploadés)
-
-### Externes
-- **GitHub API** : REST API v3
-- **Rate limiting** : Upstash Redis (optionnel MVP)
+- **GitHub** : Octokit
 
 ---
 
@@ -226,16 +241,16 @@ src/
 
 ---
 
-### Tâche 1.3 — Authentification GitHub OAuth
+### Tâche 1.3 — Authentification GitHub OAuth (Backend)
 
-**Description** : Implémenter le flow OAuth GitHub via NextAuth.js.
+**Description** : Implémenter le flow OAuth GitHub via BetterAuth côté backend.
 
 **Input** :
 - GitHub OAuth App credentials (Client ID + Secret)
 - Scopes nécessaires : `read:user`, `user:email`, `repo` (lecture)
 
 **Output** :
-- Page de login fonctionnelle
+- Routes BetterAuth fonctionnelles (`/api/auth/*`)
 - Callback OAuth géré
 - Session utilisateur persistée
 - Token GitHub stocké en base (chiffré)
@@ -243,38 +258,111 @@ src/
 **Flow détaillé** :
 
 ```
-1. User clique "Se connecter avec GitHub"
-2. Redirection vers GitHub OAuth
+1. Frontend redirige vers /api/auth/signin/github
+2. BetterAuth redirige vers GitHub OAuth
 3. User autorise l'application
 4. GitHub redirige vers /api/auth/callback/github
-5. NextAuth récupère le token + infos user
+5. BetterAuth récupère le token + infos user
 6. Création/mise à jour User en base
 7. Token GitHub chiffré et stocké
-8. Session créée, redirect vers /dashboard
+8. Session créée, redirect vers frontend /dashboard
+```
+
+**Configuration BetterAuth (backend)** :
+
+```typescript
+// lib/auth.ts
+import { betterAuth } from 'better-auth'
+import { prismaAdapter } from 'better-auth/adapters/prisma'
+import { db } from './db'
+
+export const auth = betterAuth({
+  database: prismaAdapter(db, {
+    provider: 'postgresql',
+  }),
+  socialProviders: {
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      scope: ['read:user', 'user:email', 'repo'],
+    },
+  },
+  session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    },
+  },
+})
 ```
 
 **Comment tester** :
-1. Accéder à `/login` → bouton GitHub visible
-2. Cliquer → redirection GitHub
-3. Autoriser → retour sur `/dashboard`
-4. Vérifier en base : User créé avec `github_access_token` non null
-5. Refresh page → session maintenue
-6. Déconnexion → session détruite
+1. Accéder à `/api/auth/signin/github` → redirection GitHub
+2. Autoriser → retour callback
+3. Vérifier en base : User créé avec `githubAccessToken` non null
+4. Appeler `/api/auth/session` → session valide
+5. Déconnexion via `/api/auth/signout` → session détruite
 
 **Cas limites à gérer** :
-- User refuse l'autorisation → afficher message d'erreur clair
+- User refuse l'autorisation → redirect avec erreur
 - Token GitHub expiré/révoqué → détecter et demander reconnexion
 - User existe déjà (même email) → mettre à jour au lieu de créer
 - Chiffrement du token : utiliser `crypto` avec clé dans env var
 
-**Variables d'environnement requises** :
+**Variables d'environnement requises (backend)** :
 ```env
 GITHUB_CLIENT_ID=xxx
 GITHUB_CLIENT_SECRET=xxx
-NEXTAUTH_SECRET=xxx
-NEXTAUTH_URL=http://localhost:3000
-ENCRYPTION_KEY=xxx  # Pour chiffrer les tokens
+BETTER_AUTH_SECRET=xxx
+BETTER_AUTH_URL=http://localhost:4000
+ENCRYPTION_KEY=xxx
 ```
+
+---
+
+### Tâche 1.3b — Client Auth (Frontend)
+
+**Description** : Configurer le client BetterAuth côté frontend.
+
+**Input** :
+- URL du backend
+
+**Output** :
+- Client BetterAuth configuré
+- Hook `useAuth` pour accéder à la session
+- Composant de protection des routes
+
+**Configuration (frontend)** :
+
+```typescript
+// lib/auth-client.ts
+import { createAuthClient } from 'better-auth/client'
+
+export const authClient = createAuthClient({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+})
+
+// hooks/useAuth.ts
+import { authClient } from '@/lib/auth-client'
+
+export function useAuth() {
+  const { data: session, isPending } = authClient.useSession()
+  
+  return {
+    user: session?.user,
+    isLoading: isPending,
+    isAuthenticated: !!session?.user,
+    signIn: () => authClient.signIn.social({ provider: 'github' }),
+    signOut: () => authClient.signOut(),
+  }
+}
+```
+
+**Comment tester** :
+1. Appeler `signIn()` → redirection OAuth
+2. Retour → `useAuth()` retourne le user
+3. Refresh page → session maintenue
+4. `signOut()` → user devient null
 
 ---
 
