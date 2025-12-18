@@ -12,6 +12,7 @@ import githubRoutes from './routes/github.routes.js'
 import meetingsRoutes from './routes/meetings.routes.js'
 import tasksRoutes from './routes/tasks.routes.js'
 import agentRoutes from './routes/agent.routes.js'
+import exportRoutes from './routes/export.routes.js'
 import { JobQueueService } from './services/job-queue.service.js'
 
 const app = new Hono()
@@ -32,6 +33,7 @@ app.route('/api/github', githubRoutes)
 app.route('/api/meetings', meetingsRoutes)
 app.route('/api/tasks', tasksRoutes)
 app.route('/api/agent', agentRoutes)
+app.route('/api/export', exportRoutes)
 
 // Health check endpoint
 app.get('/health', (c) => {

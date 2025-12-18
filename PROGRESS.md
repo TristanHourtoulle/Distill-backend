@@ -4,9 +4,9 @@
 
 ## État actuel
 
-**Phase en cours :** Phase 5 — Export
+**Phase en cours :** MVP Complete
 **Dernière mise à jour :** 18 Dec 2025
-**Prochaine tâche :** Tâche 5.2 — Routes export
+**Prochaine tâche :** —
 
 ---
 
@@ -120,12 +120,13 @@
 | Tâche                              | Status | Date | Notes |
 | ---------------------------------- | ------ | ---- | ----- |
 | 5.1 — Service export GitHub Issues | ✅     | 18 Dec 2025 | ExportService + GitHub Issues |
-| 5.2 — Routes export                | ⏳     | -    | -     |
+| 5.2 — Routes export                | ✅     | 18 Dec 2025 | Export REST endpoints |
 
 ### Phase 5 files
 
 - `src/types/export.types.ts` ✅ (Export types)
 - `src/services/export.service.ts` ✅ (GitHub Issues export)
+- `src/routes/export.routes.ts` ✅ (Export REST endpoints)
 
 ---
 
@@ -165,3 +166,4 @@
 | 18 Dec 2025 | Agent tools: list_dir, read_file, search, imports | Agent tools ready       |
 | 18 Dec 2025 | Prompts, orchestrator, Claude function calling | Agent core complete       |
 | 18 Dec 2025 | AnalysisService, agent routes                  | Phase 4 complete          |
+| 18 Dec 2025 | ExportService, export routes                   | MVP Complete              |
