@@ -6,7 +6,7 @@
 
 **Phase en cours :** Phase 3 — Meetings & Parsing
 **Dernière mise à jour :** 18 Dec 2025
-**Prochaine tâche :** Tâche 3.1 — Routes meetings CRUD
+**Prochaine tâche :** Tâche 3.2 — Service parsing (LLM)
 
 ---
 
@@ -67,12 +67,18 @@
 
 ## Phase 3 — Meetings & Parsing
 
-| Tâche                       | Status | Date | Notes                       |
-| --------------------------- | ------ | ---- | --------------------------- |
-| 3.1 — Routes meetings CRUD  | ⏳     | -    | -                           |
-| 3.2 — Service parsing (LLM) | ⏳     | -    | Requiert: @anthropic-ai/sdk |
-| 3.3 — Estimation complexité | ⏳     | -    | -                           |
-| 3.4 — Routes tasks          | ⏳     | -    | -                           |
+| Tâche                       | Status | Date        | Notes                       |
+| --------------------------- | ------ | ----------- | --------------------------- |
+| 3.1 — Routes meetings CRUD  | ✅     | 18 Dec 2025 | Full CRUD + tasks endpoint  |
+| 3.2 — Service parsing (LLM) | ⏳     | -           | Requires: @anthropic-ai/sdk |
+| 3.3 — Estimation complexité | ⏳     | -           | -                           |
+| 3.4 — Routes tasks          | ⏳     | -           | -                           |
+
+### Phase 3 files
+
+- `src/schemas/meeting.schema.ts` ✅ (Zod validation for meetings)
+- `src/services/meeting.service.ts` ✅ (Meeting CRUD + stats)
+- `src/routes/meetings.routes.ts` ✅ (REST endpoints)
 
 ---
 
@@ -128,3 +134,4 @@
 | 18 Dec 2025 | IndexationService, types, stack detection      | Code indexation service      |
 | 18 Dec 2025 | JobQueueService, job routes, progress tracking | Background job system        |
 | 18 Dec 2025 | GitHub proxy routes, verify endpoint           | Phase 2 complete             |
+| 18 Dec 2025 | Meeting schemas, service, routes               | Meetings CRUD complete       |
