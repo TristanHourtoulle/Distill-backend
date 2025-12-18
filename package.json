@@ -30,6 +30,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@hono/node-server": "^1.19.7",
     "@hono/zod-validator": "^0.7.6",
     "@prisma/client": "^6.19.1",
