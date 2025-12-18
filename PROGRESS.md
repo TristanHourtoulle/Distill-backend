@@ -4,9 +4,9 @@
 
 ## État actuel
 
-**Phase en cours :** Phase 3 — Meetings & Parsing
+**Phase en cours :** Phase 4 — Agent d'analyse
 **Dernière mise à jour :** 18 Dec 2025
-**Prochaine tâche :** Tâche 3.3 — Estimation complexité
+**Prochaine tâche :** Tâche 4.1 — Tools agent
 
 ---
 
@@ -71,8 +71,8 @@
 | --------------------------- | ------ | ----------- | --------------------------- |
 | 3.1 — Routes meetings CRUD  | ✅     | 18 Dec 2025 | Full CRUD + tasks endpoint  |
 | 3.2 — Service parsing (LLM) | ✅     | 18 Dec 2025 | Claude SDK + task extraction|
-| 3.3 — Estimation complexité | ⏳     | -           | -                           |
-| 3.4 — Routes tasks          | ⏳     | -           | -                           |
+| 3.3 — Estimation complexité | ✅     | 18 Dec 2025 | Factor-based scoring        |
+| 3.4 — Routes tasks          | ✅     | 18 Dec 2025 | Full CRUD + bulk ops        |
 
 ### Phase 3 files
 
@@ -81,6 +81,11 @@
 - `src/routes/meetings.routes.ts` ✅ (REST endpoints + parsing)
 - `src/types/parsing.types.ts` ✅ (LLM parsing types)
 - `src/services/parsing.service.ts` ✅ (Claude SDK integration)
+- `src/types/complexity.types.ts` ✅ (Complexity estimation types)
+- `src/services/complexity.service.ts` ✅ (Factor-based scoring)
+- `src/schemas/task.schema.ts` ✅ (Task validation schemas)
+- `src/services/task.service.ts` ✅ (Task CRUD + stats)
+- `src/routes/tasks.routes.ts` ✅ (Task endpoints)
 
 ---
 
@@ -138,3 +143,4 @@
 | 18 Dec 2025 | GitHub proxy routes, verify endpoint           | Phase 2 complete             |
 | 18 Dec 2025 | Meeting schemas, service, routes               | Meetings CRUD complete       |
 | 18 Dec 2025 | ParsingService, Claude SDK, task extraction    | LLM parsing complete         |
+| 18 Dec 2025 | ComplexityService, TaskService, tasks routes   | Phase 3 complete             |
