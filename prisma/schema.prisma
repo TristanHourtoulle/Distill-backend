@@ -1,0 +1,323 @@
+// Prisma Schema for Distill API
+// Based on database-schema.mermaid
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================
+// USER
+// ===========================================
+model User {
+  id                String   @id @default(uuid())
+  email             String   @unique
+  name              String?
+  avatarUrl         String?  @map("avatar_url")
+  githubAccessToken String?  @map("github_access_token") // Encrypted
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  projects     Project[]
+  integrations Integration[]
+
+  @@map("users")
+}
+
+// ===========================================
+// PROJECT
+// ===========================================
+enum ProjectStatus {
+  pending
+  indexing
+  ready
+  error
+}
+
+model Project {
+  id              String        @id @default(uuid())
+  userId          String        @map("user_id")
+  githubRepoUrl   String        @map("github_repo_url")
+  githubOwner     String        @map("github_owner")
+  githubRepoName  String        @map("github_repo_name")
+  defaultBranch   String        @map("default_branch") // Default branch of the repo
+  preferredBranch String        @map("preferred_branch") // Preferred branch for analysis
+  name            String
+  description     String?
+  detectedStack   Json?         @map("detected_stack") // e.g., { nextjs, typescript, tailwind }
+  structureSummary Json?        @map("structure_summary") // Condensed project map
+  status          ProjectStatus @default(pending)
+  lastIndexedAt   DateTime?     @map("last_indexed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rules    ProjectRule[]
+  indexes  ProjectIndex[]
+  meetings Meeting[]
+  tasks    Task[]
+
+  @@map("projects")
+}
+
+// ===========================================
+// PROJECT RULE
+// ===========================================
+enum RuleType {
+  must_do
+  must_not_do
+  convention
+  pattern
+}
+
+model ProjectRule {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  type      RuleType
+  content   String   // e.g., "Always use Zustand"
+  priority  Int      @default(0) // Order of importance
+  isActive  Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_rules")
+}
+
+// ===========================================
+// PROJECT INDEX
+// ===========================================
+model ProjectIndex {
+  id            String   @id @default(uuid())
+  projectId     String   @map("project_id")
+  filePath      String   @map("file_path")
+  fileType      String   @map("file_type") // component|hook|api|util|config|other
+  exports       Json?    // Exported functions/components
+  imports       Json?    // Dependencies
+  summary       String?  // LLM-generated summary
+  lineCount     Int      @map("line_count")
+  lastCommitSha String?  @map("last_commit_sha")
+
+  indexedAt DateTime @default(now()) @map("indexed_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_indexes")
+}
+
+// ===========================================
+// MEETING
+// ===========================================
+enum MeetingSource {
+  upload
+  paste
+  webhook
+}
+
+enum MeetingStatus {
+  pending
+  processing
+  completed
+  error
+}
+
+model Meeting {
+  id              String        @id @default(uuid())
+  projectId       String        @map("project_id")
+  title           String
+  rawContent      String        @map("raw_content") // Raw meeting summary
+  parsedSummary   String?       @map("parsed_summary") // Structured version
+  referenceBranch String        @map("reference_branch") // Branch to analyze, e.g., develop, staging
+  source          MeetingSource @default(paste)
+  metadata        Json?         // Meeting date, participants, etc.
+  status          MeetingStatus @default(pending)
+  meetingDate     DateTime?     @map("meeting_date")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
+
+  @@map("meetings")
+}
+
+// ===========================================
+// TASK
+// ===========================================
+enum TaskType {
+  feature
+  bugfix
+  modification
+  documentation
+  refactor
+}
+
+enum TaskComplexity {
+  simple
+  moderate
+  critical
+}
+
+enum TaskStatus {
+  pending
+  analyzing
+  analyzed
+  exported
+  archived
+}
+
+model Task {
+  id                    String         @id @default(uuid())
+  meetingId             String         @map("meeting_id")
+  projectId             String         @map("project_id")
+  title                 String
+  description           String
+  type                  TaskType       @default(feature)
+  complexity            TaskComplexity @default(moderate)
+  status                TaskStatus     @default(pending)
+  impactedFilesPreview  Json?          @map("impacted_files_preview") // Quick estimate before analysis
+  estimatedFilesCount   Int?           @map("estimated_files_count")
+  priority              Int            @default(0) // Order in meeting
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  meeting  Meeting        @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  project  Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  analyses TaskAnalysis[]
+  exports  TaskExport[]
+
+  @@map("tasks")
+}
+
+// ===========================================
+// TASK ANALYSIS
+// ===========================================
+enum AnalysisStatus {
+  running
+  completed
+  failed
+}
+
+model TaskAnalysis {
+  id                  String         @id @default(uuid())
+  taskId              String         @map("task_id")
+  filesToCreate       Json?          @map("files_to_create") // path, description, suggested template
+  filesToModify       Json?          @map("files_to_modify") // path, lines, changes
+  implementationSteps Json?          @map("implementation_steps") // Ordered steps
+  risks               Json?          // Identified risks
+  dependencies        Json?          // Related tasks
+  reasoning           String?        // LLM explanation
+  tokensUsed          Int?           @map("tokens_used")
+  toolCallsCount      Int?           @map("tool_calls_count")
+  status              AnalysisStatus @default(running)
+  errorMessage        String?        @map("error_message")
+
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+
+  // Relations
+  task Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  logs AgentLog[]
+
+  @@map("task_analyses")
+}
+
+// ===========================================
+// AGENT LOG
+// ===========================================
+enum AgentActionType {
+  list_dir
+  read_file
+  search_code
+  get_imports
+  thinking
+}
+
+model AgentLog {
+  id               String          @id @default(uuid())
+  taskAnalysisId   String          @map("task_analysis_id")
+  stepNumber       Int             @map("step_number")
+  actionType       AgentActionType @map("action_type")
+  actionInput      String?         @map("action_input") // Tool parameters
+  actionOutput     String?         @map("action_output") // Truncated result
+  tokensIn         Int?            @map("tokens_in")
+  tokensOut        Int?            @map("tokens_out")
+  durationMs       Int?            @map("duration_ms")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  taskAnalysis TaskAnalysis @relation(fields: [taskAnalysisId], references: [id], onDelete: Cascade)
+
+  @@map("agent_logs")
+}
+
+// ===========================================
+// INTEGRATION
+// ===========================================
+enum IntegrationType {
+  github_issues
+  notion
+  jira
+  linear
+}
+
+model Integration {
+  id          String          @id @default(uuid())
+  userId      String          @map("user_id")
+  type        IntegrationType
+  config      Json?           // workspace_id, database_id, project_key, etc.
+  accessToken String?         @map("access_token") // Encrypted
+  isActive    Boolean         @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exports TaskExport[]
+
+  @@map("integrations")
+}
+
+// ===========================================
+// TASK EXPORT
+// ===========================================
+enum ExportStatus {
+  pending
+  success
+  failed
+}
+
+model TaskExport {
+  id              String       @id @default(uuid())
+  taskId          String       @map("task_id")
+  integrationId   String       @map("integration_id")
+  externalId      String?      @map("external_id") // Created issue/page ID
+  externalUrl     String?      @map("external_url")
+  exportedContent Json?        @map("exported_content") // Snapshot of what was sent
+  status          ExportStatus @default(pending)
+  errorMessage    String?      @map("error_message")
+
+  exportedAt DateTime @default(now()) @map("exported_at")
+
+  // Relations
+  task        Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@map("task_exports")
+}
