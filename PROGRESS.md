@@ -6,7 +6,7 @@
 
 **Phase en cours :** Phase 5 — Export
 **Dernière mise à jour :** 18 Dec 2025
-**Prochaine tâche :** Tâche 5.1 — Service export GitHub Issues
+**Prochaine tâche :** Tâche 5.2 — Routes export
 
 ---
 
@@ -119,8 +119,13 @@
 
 | Tâche                              | Status | Date | Notes |
 | ---------------------------------- | ------ | ---- | ----- |
-| 5.1 — Service export GitHub Issues | ⏳     | -    | -     |
+| 5.1 — Service export GitHub Issues | ✅     | 18 Dec 2025 | ExportService + GitHub Issues |
 | 5.2 — Routes export                | ⏳     | -    | -     |
+
+### Phase 5 files
+
+- `src/types/export.types.ts` ✅ (Export types)
+- `src/services/export.service.ts` ✅ (GitHub Issues export)
 
 ---
 
