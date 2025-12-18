@@ -12,34 +12,130 @@ import { getAnthropicTools, executeTool, formatToolResult, type ToolName } from 
 import type { AgentContext, ToolResult } from '../types/agent.types.js'
 
 /**
- * Analysis result structure
+ * Analysis result structure (enhanced for detailed GitHub Issues)
  */
 export interface AnalysisResult {
+  // Core fields
+  taskType: string
   summary: string
+  context: string
+  expectedBehavior: string
+
+  // Acceptance criteria
+  acceptanceCriteria: string[]
+
+  // Files
   filesToCreate: Array<{
     path: string
     description: string
-    template?: string | undefined
+    suggestedCode?: string | undefined
   }>
   filesToModify: Array<{
     path: string
     changes: Array<{
       location: string
+      action: 'add' | 'modify' | 'remove'
       description: string
       reason: string
+      beforeCode?: string | undefined
+      afterCode?: string | undefined
     }>
   }>
+
+  // Functions/Components to create
+  functionsToCreate: Array<{
+    name: string
+    signature: string
+    description: string
+    location: string
+  }>
+
+  // Implementation steps
   implementationSteps: Array<{
     order: number
+    title: string
     description: string
+    rationale?: string | undefined
     files: string[]
+    codeExample?: string | undefined
   }>
+
+  // Edge cases
+  edgeCases: Array<{
+    scenario: string
+    expectedBehavior: string
+  }>
+
+  // Testing
+  testingInstructions: Array<{
+    type: 'unit' | 'integration' | 'manual'
+    description: string
+    steps: string[]
+  }>
+
+  // Risks
   risks: Array<{
     description: string
+    severity: 'low' | 'medium' | 'high'
     mitigation: string
   }>
+
+  // Dependencies
   dependencies: string[]
-  testingRecommendations: string[]
+
+  // Breaking changes
+  breakingChanges: {
+    hasBreakingChanges: boolean
+    description?: string | undefined
+    migrationSteps?: string[] | undefined
+  }
+
+  // Metadata
+  metadata: {
+    estimatedEffort: string
+    affectedComponents: string[]
+    requiresTests: boolean
+    requiresDocumentation: boolean
+  }
+
+  // Bug-specific fields (optional)
+  bugAnalysis?: {
+    rootCause: string
+    problematicCode?: {
+      file: string
+      lines: string
+      code: string
+    }
+    reproductionSteps: string[]
+  }
+  fix?: {
+    approach: string
+    codeDiff?: {
+      before: string
+      after: string
+    }
+  }
+  regressionRisks?: Array<{
+    area: string
+    mitigation: string
+  }>
+
+  // Modification-specific fields (optional)
+  currentState?: string
+  targetState?: string
+  impactAnalysis?: {
+    directlyAffected: string[]
+    potentiallyAffected: string[]
+    noChangeNeeded: string[]
+  }
+  backwardsCompatibility?: {
+    isCompatible: boolean
+    breakingChanges: string[]
+    migrationRequired: boolean
+  }
+
+  // Legacy fields for backwards compatibility
+  testingRecommendations?: string[]
 }
 
 /**
@@ -69,7 +165,7 @@ export interface OrchestratorConfig {
  * Default orchestrator configuration
  */
 export const DEFAULT_ORCHESTRATOR_CONFIG: OrchestratorConfig = {
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-3-5-haiku-20241022', // Haiku: ~10x cheaper than Sonnet, faster, max 8192 output tokens
   maxTokens: 8192,
   maxIterations: 25,
   temperature: 0.3,
@@ -316,41 +412,276 @@ export class AgentOrchestrator {
   }
 
   /**
+   * Try to fix truncated JSON by closing open brackets
+   */
+  private tryFixTruncatedJson(jsonStr: string): string {
+    // Step 1: Count open brackets and detect string state
+    let openBraces = 0
+    let openBrackets = 0
+    let inString = false
+    let escapeNext = false
+
+    for (const char of jsonStr) {
+      if (escapeNext) {
+        escapeNext = false
+        continue
+      }
+
+      if (char === '\\') {
+        escapeNext = true
+        continue
+      }
+
+      if (char === '"') {
+        inString = !inString
+        continue
+      }
+
+      if (!inString) {
+        if (char === '{') openBraces++
+        if (char === '}') openBraces--
+        if (char === '[') openBrackets++
+        if (char === ']') openBrackets--
+      }
+    }
+
+    // Step 2: If we're in a string, close it
+    if (inString) {
+      jsonStr += '"'
+    }
+
+    // Step 3: Clean up incomplete patterns BEFORE closing brackets
+    // This is critical - we need to remove orphan keys/values first
+
+    // Remove orphan key at the very end (key without colon): ,"keyName"
+    jsonStr = jsonStr.replace(/,\s*"[^"]*"\s*$/, '')
+
+    // Remove incomplete key-value (key with colon but no value): ,"keyName":
+    jsonStr = jsonStr.replace(/,\s*"[^"]*"\s*:\s*$/, '')
+
+    // Remove incomplete string value: ,"key": "partial
+    // After closing quote, we might have: ,"key": "partial"
+    // If the value looks incomplete (short, no proper ending), remove the whole pair
+    jsonStr = jsonStr.replace(/,\s*"[^"]*"\s*:\s*"[^"]{0,20}"\s*$/, '')
+
+    // Remove incomplete array value: ,"key": [
+    jsonStr = jsonStr.replace(/,\s*"[^"]*"\s*:\s*\[\s*$/, '')
+
+    // Remove incomplete object value: ,"key": {
+    jsonStr = jsonStr.replace(/,\s*"[^"]*"\s*:\s*\{\s*$/, '')
+
+    // Remove incomplete number/boolean/null: ,"key": 123 or ,"key": tru or ,"key": nul
+    jsonStr = jsonStr.replace(/,\s*"[^"]*"\s*:\s*[a-z0-9.]+\s*$/i, '')
+
+    // Step 4: Now close any unclosed brackets/braces
+    // Recount after cleanup
+    openBraces = 0
+    openBrackets = 0
+    inString = false
+    escapeNext = false
+
+    for (const char of jsonStr) {
+      if (escapeNext) {
+        escapeNext = false
+        continue
+      }
+      if (char === '\\') {
+        escapeNext = true
+        continue
+      }
+      if (char === '"') {
+        inString = !inString
+        continue
+      }
+      if (!inString) {
+        if (char === '{') openBraces++
+        if (char === '}') openBraces--
+        if (char === '[') openBrackets++
+        if (char === ']') openBrackets--
+      }
+    }
+
+    while (openBrackets > 0) {
+      jsonStr += ']'
+      openBrackets--
+    }
+    while (openBraces > 0) {
+      jsonStr += '}'
+      openBraces--
+    }
+
+    // Step 5: Final cleanup - remove trailing commas before closing brackets
+    jsonStr = jsonStr.replace(/,(\s*[\]}])/g, '$1')
+
+    return jsonStr
+  }
+
+  /**
    * Parse the analysis result from Claude's response
    */
   private parseAnalysisResult(text: string): AnalysisResult {
-    // Try to extract JSON from the response
-    const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/)
-    const jsonStr = jsonMatch?.[1] ?? text
+    // Strategy: Find JSON content regardless of any prose the model wrote
+    let jsonStr = ''
+
+    // Method 1: Complete code block ```json ... ```
+    const completeBlock = text.match(/```json\s*([\s\S]*?)\s*```/)
+    if (completeBlock && completeBlock[1]) {
+      jsonStr = completeBlock[1]
+    }
+
+    // Method 2: Incomplete code block (truncated) ```json ...
+    if (!jsonStr) {
+      const incompleteBlock = text.match(/```json\s*([\s\S]*)/)
+      if (incompleteBlock && incompleteBlock[1]) {
+        jsonStr = incompleteBlock[1]
+      }
+    }
+
+    // Method 3: Look for JSON starting with { "taskType" (our expected format)
+    if (!jsonStr) {
+      const taskTypeMatch = text.match(/\{\s*"taskType"[\s\S]*/)
+      if (taskTypeMatch) {
+        jsonStr = taskTypeMatch[0]
+      }
+    }
+
+    // Method 4: Find any JSON object starting with {
+    if (!jsonStr) {
+      const jsonStart = text.indexOf('{')
+      if (jsonStart !== -1) {
+        jsonStr = text.substring(jsonStart)
+      }
+    }
+
+    // If still no JSON found, use the whole text
+    if (!jsonStr) {
+      jsonStr = text
+    }
+
+    // Clean up the JSON string
+    jsonStr = jsonStr.trim()
+
+    // Remove any trailing prose after the JSON (e.g., "}Some explanation")
+    // Find the last } and truncate there
+    const lastBrace = jsonStr.lastIndexOf('}')
+    if (lastBrace !== -1 && lastBrace < jsonStr.length - 1) {
+      const afterBrace = jsonStr.substring(lastBrace + 1).trim()
+      // If there's non-whitespace after the last }, it's probably prose
+      if (afterBrace && !afterBrace.startsWith('```')) {
+        jsonStr = jsonStr.substring(0, lastBrace + 1)
+      }
+    }
+
+    // Try to fix truncated JSON by closing open brackets
+    jsonStr = this.tryFixTruncatedJson(jsonStr)
+
+    // Debug: log the JSON we're trying to parse
+    console.log('=== JSON Parsing Debug ===')
+    console.log('JSON length:', jsonStr.length)
+    console.log('JSON start:', jsonStr.substring(0, 200))
+    console.log('JSON end:', jsonStr.substring(Math.max(0, jsonStr.length - 200)))
+    console.log('=== End Debug ===')
 
     try {
-      const parsed = JSON.parse(jsonStr.trim()) as Partial<AnalysisResult>
+      const parsed = JSON.parse(jsonStr) as Partial<AnalysisResult>
 
-      // Provide defaults for missing fields
+      // Provide defaults for all fields
       return {
+        // Core fields
+        taskType: parsed.taskType || 'feature',
         summary: parsed.summary || 'Analysis completed',
+        context: parsed.context || '',
+        expectedBehavior: parsed.expectedBehavior || '',
+
+        // Acceptance criteria
+        acceptanceCriteria: parsed.acceptanceCriteria || [],
+
+        // Files
         filesToCreate: parsed.filesToCreate || [],
         filesToModify: parsed.filesToModify || [],
+
+        // Functions
+        functionsToCreate: parsed.functionsToCreate || [],
+
+        // Implementation
         implementationSteps: parsed.implementationSteps || [],
-        risks: parsed.risks || [],
+
+        // Edge cases
+        edgeCases: parsed.edgeCases || [],
+
+        // Testing
+        testingInstructions: parsed.testingInstructions || [],
+
+        // Risks
+        risks: (parsed.risks || []).map(r => ({
+          description: r.description,
+          severity: r.severity || 'medium',
+          mitigation: r.mitigation,
+        })),
+
+        // Dependencies
         dependencies: parsed.dependencies || [],
-        testingRecommendations: parsed.testingRecommendations || [],
+
+        // Breaking changes
+        breakingChanges: parsed.breakingChanges || {
+          hasBreakingChanges: false,
+        },
+
+        // Metadata
+        metadata: parsed.metadata || {
+          estimatedEffort: 'Unknown',
+          affectedComponents: [],
+          requiresTests: true,
+          requiresDocumentation: false,
+        },
+
+        // Bug-specific (optional)
+        bugAnalysis: parsed.bugAnalysis,
+        fix: parsed.fix,
+        regressionRisks: parsed.regressionRisks,
+
+        // Modification-specific (optional)
+        currentState: parsed.currentState,
+        targetState: parsed.targetState,
+        impactAnalysis: parsed.impactAnalysis,
+        backwardsCompatibility: parsed.backwardsCompatibility,
+
+        // Legacy
+        testingRecommendations: parsed.testingRecommendations,
       }
-    } catch {
-      // If JSON parsing fails, try to extract structured info from text
+    } catch (parseError) {
+      // If JSON parsing fails, log the error and return fallback
+      console.error('=== JSON Parse Error ===')
+      console.error('Error:', parseError instanceof Error ? parseError.message : parseError)
+      console.error('=== End Error ===')
+
       return {
+        taskType: 'feature',
         summary: text.substring(0, 500),
+        context: '',
+        expectedBehavior: '',
+        acceptanceCriteria: [],
         filesToCreate: [],
         filesToModify: [],
+        functionsToCreate: [],
         implementationSteps: [],
+        edgeCases: [],
+        testingInstructions: [],
         risks: [
           {
             description: 'Could not parse structured response',
+            severity: 'high',
             mitigation: 'Review the raw analysis output manually',
           },
         ],
         dependencies: [],
-        testingRecommendations: [],
+        breakingChanges: { hasBreakingChanges: false },
+        metadata: {
+          estimatedEffort: 'Unknown',
+          affectedComponents: [],
+          requiresTests: true,
+          requiresDocumentation: false,
+        },
       }
     }
   }
