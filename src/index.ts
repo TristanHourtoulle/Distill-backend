@@ -6,6 +6,7 @@ import 'dotenv/config'
 
 import { errorMiddleware } from './middlewares/error.middleware.js'
 import authRoutes from './routes/auth.routes.js'
+import projectsRoutes from './routes/projects.routes.js'
 
 const app = new Hono()
 
@@ -19,6 +20,7 @@ app.use('*', errorMiddleware)
 
 // Mount routes
 app.route('/api/auth', authRoutes)
+app.route('/api/projects', projectsRoutes)
 
 // Health check endpoint
 app.get('/health', (c) => {

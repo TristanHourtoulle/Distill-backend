@@ -6,7 +6,7 @@
 
 **Phase en cours :** Phase 2 — GitHub & Indexation
 **Dernière mise à jour :** 18 Dec 2024
-**Prochaine tâche :** Tâche 2.2 — Routes projects CRUD
+**Prochaine tâche :** Tâche 2.3 — Service indexation
 
 ---
 
@@ -17,7 +17,7 @@
 | 1.1 — Init projet (package.json, tsconfig) | ✅     | 18 Dec 2024 | Hono, Prisma, Zod, TypeScript      |
 | 1.2 — Schema Prisma                        | ✅     | 18 Dec 2024 | Tous les modèles créés             |
 | 1.3 — Auth BetterAuth                      | ✅     | 18 Dec 2024 | GitHub OAuth configured            |
-| 1.4 — Middlewares de base                  | 🚧     | 18 Dec 2024 | error.middleware.ts créé           |
+| 1.4 — Middlewares de base                  | ✅     | 18 Dec 2024 | error + auth middlewares           |
 
 ### Fichiers créés
 
@@ -35,11 +35,14 @@
 ### Phase 2 files
 
 - `src/services/github.service.ts` ✅ (GitHub API wrapper)
+- `src/services/project.service.ts` ✅ (Project business logic)
 - `src/types/github.types.ts` ✅ (Types + error classes)
+- `src/schemas/project.schema.ts` ✅ (Zod validation)
+- `src/routes/projects.routes.ts` ✅ (CRUD + rules endpoints)
+- `src/middlewares/auth.middleware.ts` ✅ (Session validation)
 
 ### Dossiers créés (vides)
 
-- `src/schemas/`
 - `src/agent/tools/`
 
 ---
@@ -49,7 +52,7 @@
 | Tâche                           | Status | Date        | Notes                    |
 | ------------------------------- | ------ | ----------- | ------------------------ |
 | 2.1 — Client GitHub API         | ✅     | 18 Dec 2024 | GitHubService + types    |
-| 2.2 — Routes projects CRUD      | ⏳     | -           | -                        |
+| 2.2 — Routes projects CRUD      | ✅     | 18 Dec 2024 | Full CRUD + rules        |
 | 2.3 — Service indexation        | ⏳     | -           | -                        |
 | 2.4 — Background job indexation | ⏳     | -           | -                        |
 | 2.5 — Routes GitHub proxy       | ⏳     | -           | -                        |
@@ -115,3 +118,4 @@
 | 18 Dec 2024 | Init projet, Prisma schema, structure dossiers | Setup initial                |
 | 18 Dec 2024 | Auth BetterAuth, encryption, auth routes       | GitHub OAuth authentication  |
 | 18 Dec 2024 | GitHubService, types, error classes            | GitHub API client            |
+| 18 Dec 2024 | Projects CRUD, schemas, auth middleware        | Full project management      |
