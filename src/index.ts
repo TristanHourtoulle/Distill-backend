@@ -4,7 +4,6 @@ import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import 'dotenv/config'
 
-import { errorMiddleware } from './middlewares/error.middleware.js'
 import authRoutes from './routes/auth.routes.js'
 import projectsRoutes from './routes/projects.routes.js'
 import jobsRoutes from './routes/jobs.routes.js'
@@ -17,13 +16,37 @@ import { JobQueueService } from './services/job-queue.service.js'
 
 const app = new Hono()
 
+// Global error handler
+app.onError((err, c) => {
+  // Check if it's an AppError-like object (has statusCode and code)
+  if (
+    err !== null &&
+    typeof err === 'object' &&
+    'statusCode' in err &&
+    'code' in err
+  ) {
+    const appErr = err as { message?: string; statusCode: number; code: string }
+    return c.json(
+      { error: appErr.message ?? 'Error', code: appErr.code },
+      appErr.statusCode as 400 | 401 | 403 | 404 | 409 | 500 | 502
+    )
+  }
+
+  // Log unexpected errors
+  console.error('Unexpected error:', err)
+
+  return c.json(
+    { error: 'Internal server error', code: 'INTERNAL_ERROR' },
+    500
+  )
+})
+
 // Global middlewares
 app.use('*', logger())
 app.use('*', cors({
   origin: process.env['FRONTEND_URL'] ?? 'http://localhost:3000',
   credentials: true,
 }))
-app.use('*', errorMiddleware)
 
 // Mount routes
 app.route('/api/auth', authRoutes)
