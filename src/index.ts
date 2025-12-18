@@ -5,6 +5,7 @@ import { logger } from 'hono/logger'
 import 'dotenv/config'
 
 import { errorMiddleware } from './middlewares/error.middleware.js'
+import authRoutes from './routes/auth.routes.js'
 
 const app = new Hono()
 
@@ -15,6 +16,9 @@ app.use('*', cors({
   credentials: true,
 }))
 app.use('*', errorMiddleware)
+
+// Mount routes
+app.route('/api/auth', authRoutes)
 
 // Health check endpoint
 app.get('/health', (c) => {
