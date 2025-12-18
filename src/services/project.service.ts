@@ -1,5 +1,6 @@
 import { db } from '../lib/db.js'
 import { GitHubService } from './github.service.js'
+import { IndexationService } from './indexation.service.js'
 import {
   NotFoundError,
   ForbiddenError,
@@ -172,22 +173,42 @@ export class ProjectService {
 
   /**
    * Trigger re-indexation of a project
+   * Returns immediately with status, indexation runs asynchronously
    */
   static async triggerIndexation(projectId: string, userId: string) {
     // Verify ownership
     await this.getById(projectId, userId)
 
-    // Update status to indexing
-    await db.project.update({
-      where: { id: projectId },
-      data: { status: 'indexing' },
+    // Start indexation (runs asynchronously)
+    // We don't await this - it runs in the background
+    IndexationService.indexProject(projectId, userId).catch(error => {
+      console.error(`Indexation failed for project ${projectId}:`, error)
     })
 
-    // TODO: Implement actual indexation in task 2.3
-    // For now, just return the updated project
+    // Return the project with indexing status
     return db.project.findUnique({
       where: { id: projectId },
     })
+  }
+
+  /**
+   * Get indexation status for a project
+   */
+  static async getIndexStatus(projectId: string, userId: string) {
+    await this.getById(projectId, userId)
+    return IndexationService.getIndexStatus(projectId)
+  }
+
+  /**
+   * Get indexed files for a project
+   */
+  static async getIndexedFiles(
+    projectId: string,
+    userId: string,
+    options: { fileType?: string; limit?: number; offset?: number } = {}
+  ) {
+    await this.getById(projectId, userId)
+    return IndexationService.getIndexedFiles(projectId, options as Parameters<typeof IndexationService.getIndexedFiles>[1])
   }
 
   // ============================================

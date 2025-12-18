@@ -106,17 +106,38 @@ app.post('/:id/index', zValidator('param', projectIdSchema), async (c) => {
 
 /**
  * GET /projects/:id/status
- * Get the indexation status of a project
+ * Get detailed indexation status of a project
  */
 app.get('/:id/status', zValidator('param', projectIdSchema), async (c) => {
   const userId = c.get('userId')
   const { id } = c.req.valid('param')
-  const project = await ProjectService.getById(id, userId)
+  const status = await ProjectService.getIndexStatus(id, userId)
+  return c.json({ data: status })
+})
+
+/**
+ * GET /projects/:id/files
+ * Get indexed files for a project
+ */
+app.get('/:id/files', zValidator('param', projectIdSchema), async (c) => {
+  const userId = c.get('userId')
+  const { id } = c.req.valid('param')
+
+  // Parse query parameters
+  const fileTypeParam = c.req.query('fileType')
+  const limit = parseInt(c.req.query('limit') ?? '100', 10)
+  const offset = parseInt(c.req.query('offset') ?? '0', 10)
+
+  // Build options object conditionally to avoid undefined
+  const options: { fileType?: string; limit: number; offset: number } = { limit, offset }
+  if (fileTypeParam) {
+    options.fileType = fileTypeParam
+  }
+
+  const result = await ProjectService.getIndexedFiles(id, userId, options)
   return c.json({
-    data: {
-      status: project.status,
-      lastIndexedAt: project.lastIndexedAt,
-    },
+    data: result.files,
+    meta: { total: result.total, limit, offset },
   })
 })
 
