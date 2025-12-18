@@ -13,6 +13,12 @@ import {
   type IndexationConfig,
   DEFAULT_INDEXATION_CONFIG,
 } from '../types/indexation.types.js'
+import type { JobProgress } from '../types/job.types.js'
+
+/**
+ * Progress callback type for indexation
+ */
+export type ProgressCallback = (progress: JobProgress) => void
 
 export class IndexationService {
   /**
@@ -97,6 +103,131 @@ export class IndexationService {
 
       // Save to database
       await this.saveIndexation(projectId, analyses, detectedStack, structureSummary)
+
+      return {
+        success: true,
+        filesIndexed: analyses.length,
+        detectedStack,
+        structureSummary,
+        errors,
+      }
+    } catch (error) {
+      // Update status to error
+      await db.project.update({
+        where: { id: projectId },
+        data: { status: 'error' },
+      })
+
+      throw error
+    }
+  }
+
+  /**
+   * Index a project with progress reporting
+   * Used by the job queue for background processing
+   */
+  static async indexProjectWithProgress(
+    projectId: string,
+    userId: string,
+    onProgress?: ProgressCallback,
+    config: Partial<IndexationConfig> = {}
+  ): Promise<IndexationResult> {
+    const mergedConfig = { ...DEFAULT_INDEXATION_CONFIG, ...config }
+    const errors: string[] = []
+
+    const reportProgress = (phase: string, current: number, total: number, message?: string) => {
+      if (onProgress) {
+        onProgress({ phase, current, total, message })
+      }
+    }
+
+    // Get project info
+    const project = await db.project.findUnique({
+      where: { id: projectId },
+    })
+
+    if (!project) {
+      throw new Error('Project not found')
+    }
+
+    const branch = project.preferredBranch
+
+    try {
+      // Update status to indexing
+      await db.project.update({
+        where: { id: projectId },
+        data: { status: 'indexing' },
+      })
+
+      // Phase 1: Fetch repository tree
+      reportProgress('fetching_tree', 0, 1, 'Fetching repository structure...')
+
+      const tree = await GitHubService.getTree(
+        userId,
+        project.githubOwner,
+        project.githubRepoName,
+        branch
+      )
+
+      reportProgress('fetching_tree', 1, 1, 'Repository structure fetched')
+
+      // Filter files to index
+      const filesToIndex = this.filterFiles(tree, mergedConfig)
+      const limitedFiles = filesToIndex.slice(0, mergedConfig.maxFiles)
+
+      // Phase 2: Analyze files
+      const analyses: FileAnalysis[] = []
+      const totalFiles = limitedFiles.length
+
+      for (let i = 0; i < limitedFiles.length; i++) {
+        const file = limitedFiles[i]
+        if (!file) continue
+
+        reportProgress('analyzing_files', i, totalFiles, `Analyzing ${file.path}...`)
+
+        try {
+          // Skip large files
+          if (file.size && file.size > mergedConfig.maxFileSize) {
+            continue
+          }
+
+          const content = await GitHubService.getFileContent(
+            userId,
+            project.githubOwner,
+            project.githubRepoName,
+            file.path,
+            branch
+          )
+
+          const analysis = this.analyzeFile(file.path, content.content, file.sha)
+          analyses.push(analysis)
+        } catch (error) {
+          errors.push(`Failed to analyze ${file.path}: ${error}`)
+        }
+      }
+
+      reportProgress('analyzing_files', totalFiles, totalFiles, 'File analysis complete')
+
+      // Phase 3: Detect tech stack
+      reportProgress('detecting_stack', 0, 1, 'Detecting tech stack...')
+
+      const detectedStack = await this.detectStack(
+        userId,
+        project.githubOwner,
+        project.githubRepoName,
+        branch,
+        tree
+      )
+
+      reportProgress('detecting_stack', 1, 1, 'Tech stack detected')
+
+      // Phase 4: Generate summary and save
+      reportProgress('saving', 0, 1, 'Saving indexation results...')
+
+      const structureSummary = this.generateStructureSummary(tree, analyses)
+      await this.saveIndexation(projectId, analyses, detectedStack, structureSummary)
+
+      reportProgress('saving', 1, 1, 'Indexation complete')
 
       return {
         success: true,

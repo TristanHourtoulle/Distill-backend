@@ -95,13 +95,31 @@ app.get('/:id/branches', zValidator('param', projectIdSchema), async (c) => {
 
 /**
  * POST /projects/:id/index
- * Trigger re-indexation of a project
+ * Trigger re-indexation of a project (queues a background job)
  */
 app.post('/:id/index', zValidator('param', projectIdSchema), async (c) => {
   const userId = c.get('userId')
   const { id } = c.req.valid('param')
-  const project = await ProjectService.triggerIndexation(id, userId)
-  return c.json({ data: project, message: 'Indexation started' })
+
+  // Get optional priority from query/body
+  const priority = (c.req.query('priority') ?? 'normal') as 'low' | 'normal' | 'high'
+
+  const result = await ProjectService.triggerIndexation(id, userId, priority)
+  return c.json({ data: result, message: 'Indexation job queued' })
+})
+
+/**
+ * GET /projects/:id/job
+ * Get the current indexation job status for a project
+ */
+app.get('/:id/job', zValidator('param', projectIdSchema), async (c) => {
+  const userId = c.get('userId')
+  const { id } = c.req.valid('param')
+  const job = await ProjectService.getIndexJobStatus(id, userId)
+  if (!job) {
+    return c.json({ data: null, message: 'No indexation job found' })
+  }
+  return c.json({ data: job })
 })
 
 /**

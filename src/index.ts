@@ -7,6 +7,8 @@ import 'dotenv/config'
 import { errorMiddleware } from './middlewares/error.middleware.js'
 import authRoutes from './routes/auth.routes.js'
 import projectsRoutes from './routes/projects.routes.js'
+import jobsRoutes from './routes/jobs.routes.js'
+import { JobQueueService } from './services/job-queue.service.js'
 
 const app = new Hono()
 
@@ -21,6 +23,7 @@ app.use('*', errorMiddleware)
 // Mount routes
 app.route('/api/auth', authRoutes)
 app.route('/api/projects', projectsRoutes)
+app.route('/api/jobs', jobsRoutes)
 
 // Health check endpoint
 app.get('/health', (c) => {
@@ -49,6 +52,10 @@ serve({
   port,
 }, (info) => {
   console.log(`Server running at http://localhost:${info.port}`)
+
+  // Start the job queue worker
+  JobQueueService.startWorker()
+  console.log('Job queue worker started')
 })
 
 export default app

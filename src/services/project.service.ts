@@ -1,6 +1,7 @@
 import { db } from '../lib/db.js'
 import { GitHubService } from './github.service.js'
 import { IndexationService } from './indexation.service.js'
+import { JobQueueService } from './job-queue.service.js'
 import {
   NotFoundError,
   ForbiddenError,
@@ -173,22 +174,46 @@ export class ProjectService {
 
   /**
    * Trigger re-indexation of a project
-   * Returns immediately with status, indexation runs asynchronously
+   * Returns immediately with job info, indexation runs in background
    */
-  static async triggerIndexation(projectId: string, userId: string) {
+  static async triggerIndexation(projectId: string, userId: string, priority?: 'low' | 'normal' | 'high') {
     // Verify ownership
     await this.getById(projectId, userId)
 
-    // Start indexation (runs asynchronously)
-    // We don't await this - it runs in the background
-    IndexationService.indexProject(projectId, userId).catch(error => {
-      console.error(`Indexation failed for project ${projectId}:`, error)
-    })
+    // Queue indexation job
+    const job = JobQueueService.queueIndexation(projectId, userId, priority)
 
-    // Return the project with indexing status
-    return db.project.findUnique({
-      where: { id: projectId },
-    })
+    // Return job info
+    return {
+      jobId: job.id,
+      status: job.status,
+      project: await db.project.findUnique({
+        where: { id: projectId },
+      }),
+    }
+  }
+
+  /**
+   * Get indexation job status for a project
+   */
+  static async getIndexJobStatus(projectId: string, userId: string) {
+    await this.getById(projectId, userId)
+
+    const job = JobQueueService.getProjectIndexationJob(projectId)
+    if (!job) {
+      return null
+    }
+
+    return {
+      jobId: job.id,
+      status: job.status,
+      progress: job.progress,
+      error: job.error,
+      attempts: job.attempts,
+      createdAt: job.createdAt,
+      startedAt: job.startedAt,
+      completedAt: job.completedAt,
+    }
   }
 
   /**
