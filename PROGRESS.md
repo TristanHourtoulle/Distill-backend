@@ -6,7 +6,7 @@
 
 **Phase en cours :** Phase 2 — GitHub & Indexation
 **Dernière mise à jour :** 18 Dec 2025
-**Prochaine tâche :** Tâche 2.4 — Background job indexation
+**Prochaine tâche :** Tâche 2.5 — Routes GitHub proxy
 
 ---
 
@@ -37,10 +37,13 @@
 - `src/services/github.service.ts` ✅ (GitHub API wrapper)
 - `src/services/project.service.ts` ✅ (Project business logic)
 - `src/services/indexation.service.ts` ✅ (File indexation + stack detection)
+- `src/services/job-queue.service.ts` ✅ (Background job queue + worker)
 - `src/types/github.types.ts` ✅ (Types + error classes)
 - `src/types/indexation.types.ts` ✅ (Indexation types)
+- `src/types/job.types.ts` ✅ (Job queue types)
 - `src/schemas/project.schema.ts` ✅ (Zod validation)
 - `src/routes/projects.routes.ts` ✅ (CRUD + rules + indexation endpoints)
+- `src/routes/jobs.routes.ts` ✅ (Job management endpoints)
 - `src/middlewares/auth.middleware.ts` ✅ (Session validation)
 
 ### Dossiers créés (vides)
@@ -56,7 +59,7 @@
 | 2.1 — Client GitHub API         | ✅     | 18 Dec 2025 | GitHubService + types              |
 | 2.2 — Routes projects CRUD      | ✅     | 18 Dec 2025 | Full CRUD + rules                  |
 | 2.3 — Service indexation        | ✅     | 18 Dec 2025 | File analysis + stack detection    |
-| 2.4 — Background job indexation | ⏳     | -           | -                                  |
+| 2.4 — Background job indexation | ✅     | 18 Dec 2025 | Job queue + progress tracking      |
 | 2.5 — Routes GitHub proxy       | ⏳     | -           | -                                  |
 
 ---
@@ -122,3 +125,4 @@
 | 18 Dec 2025 | GitHubService, types, error classes            | GitHub API client            |
 | 18 Dec 2025 | Projects CRUD, schemas, auth middleware        | Full project management      |
 | 18 Dec 2025 | IndexationService, types, stack detection      | Code indexation service      |
+| 18 Dec 2025 | JobQueueService, job routes, progress tracking | Background job system        |
