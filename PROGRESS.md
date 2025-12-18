@@ -5,8 +5,8 @@
 ## État actuel
 
 **Phase en cours :** Phase 2 — GitHub & Indexation
-**Dernière mise à jour :** 18 Dec 2024
-**Prochaine tâche :** Tâche 2.3 — Service indexation
+**Dernière mise à jour :** 18 Dec 2025
+**Prochaine tâche :** Tâche 2.4 — Background job indexation
 
 ---
 
@@ -36,9 +36,11 @@
 
 - `src/services/github.service.ts` ✅ (GitHub API wrapper)
 - `src/services/project.service.ts` ✅ (Project business logic)
+- `src/services/indexation.service.ts` ✅ (File indexation + stack detection)
 - `src/types/github.types.ts` ✅ (Types + error classes)
+- `src/types/indexation.types.ts` ✅ (Indexation types)
 - `src/schemas/project.schema.ts` ✅ (Zod validation)
-- `src/routes/projects.routes.ts` ✅ (CRUD + rules endpoints)
+- `src/routes/projects.routes.ts` ✅ (CRUD + rules + indexation endpoints)
 - `src/middlewares/auth.middleware.ts` ✅ (Session validation)
 
 ### Dossiers créés (vides)
@@ -49,13 +51,13 @@
 
 ## Phase 2 — GitHub & Indexation
 
-| Tâche                           | Status | Date        | Notes                    |
-| ------------------------------- | ------ | ----------- | ------------------------ |
-| 2.1 — Client GitHub API         | ✅     | 18 Dec 2024 | GitHubService + types    |
-| 2.2 — Routes projects CRUD      | ✅     | 18 Dec 2024 | Full CRUD + rules        |
-| 2.3 — Service indexation        | ⏳     | -           | -                        |
-| 2.4 — Background job indexation | ⏳     | -           | -                        |
-| 2.5 — Routes GitHub proxy       | ⏳     | -           | -                        |
+| Tâche                           | Status | Date        | Notes                              |
+| ------------------------------- | ------ | ----------- | ---------------------------------- |
+| 2.1 — Client GitHub API         | ✅     | 18 Dec 2025 | GitHubService + types              |
+| 2.2 — Routes projects CRUD      | ✅     | 18 Dec 2025 | Full CRUD + rules                  |
+| 2.3 — Service indexation        | ✅     | 18 Dec 2025 | File analysis + stack detection    |
+| 2.4 — Background job indexation | ⏳     | -           | -                                  |
+| 2.5 — Routes GitHub proxy       | ⏳     | -           | -                                  |
 
 ---
 
@@ -115,7 +117,8 @@
 
 | Date        | Tâches complétées                              | Notes                        |
 | ----------- | ---------------------------------------------- | ---------------------------- |
-| 18 Dec 2024 | Init projet, Prisma schema, structure dossiers | Setup initial                |
-| 18 Dec 2024 | Auth BetterAuth, encryption, auth routes       | GitHub OAuth authentication  |
-| 18 Dec 2024 | GitHubService, types, error classes            | GitHub API client            |
-| 18 Dec 2024 | Projects CRUD, schemas, auth middleware        | Full project management      |
+| 18 Dec 2025 | Init projet, Prisma schema, structure dossiers | Setup initial                |
+| 18 Dec 2025 | Auth BetterAuth, encryption, auth routes       | GitHub OAuth authentication  |
+| 18 Dec 2025 | GitHubService, types, error classes            | GitHub API client            |
+| 18 Dec 2025 | Projects CRUD, schemas, auth middleware        | Full project management      |
+| 18 Dec 2025 | IndexationService, types, stack detection      | Code indexation service      |
