@@ -360,6 +360,15 @@ export function decrypt(encryptedText: string): string {
 
 ## Conventions
 
+### Language
+
+All code must be written in **English**:
+- Comments in English
+- Function and variable names in English
+- Documentation in English
+- Error messages in English
+- Commit messages in English
+
 ### Nommage
 
 - **Fichiers** : kebab-case (`project.service.ts`, `auth.middleware.ts`)
