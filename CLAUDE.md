@@ -425,3 +425,15 @@ pnpm prisma studio          # Admin BDD
 pnpm prisma migrate dev     # Migrations
 pnpm lint                   # Linter
 ```
+
+## Git Rules
+
+### Commit Policy
+
+**NEVER create commits unless explicitly requested by the user.**
+
+- Do NOT commit automatically after completing a task
+- Do NOT suggest or offer to commit changes
+- Only create commits when the user explicitly calls `/git-process-addition` or asks to commit
+- When committing, NEVER mention AI, Claude Code, or any automated tool in commit messages
+- No "Co-Authored-By: Claude" or "Generated with Claude Code" signatures

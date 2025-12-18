@@ -70,8 +70,18 @@ git add src/components/Navbar.tsx
 git commit -m "fix: correct navbar responsive behavior"
 ```
 
-Notes
+## Critical Rules
+
+⚠️ **NEVER mention AI or Claude Code in commits:**
+- Do NOT add "Generated with Claude Code" or similar
+- Do NOT add "Co-Authored-By: Claude" or any AI co-author
+- Commits must appear as if written by a human developer
+- No emojis like 🤖 that suggest AI involvement
+
+## Notes
+
 • Always check compilation before committing.
 • Always follow conventional commit standards (type: description).
 • One commit per type of detected modification.
 • Never push automatically.
+• Never mention AI, Claude, or any automated tool in commit messages.
