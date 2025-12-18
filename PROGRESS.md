@@ -4,9 +4,9 @@
 
 ## État actuel
 
-**Phase en cours :** Phase 1 — Fondations
+**Phase en cours :** Phase 2 — GitHub & Indexation
 **Dernière mise à jour :** 18 Dec 2024
-**Prochaine tâche :** Tâche 2.1 — Client GitHub API
+**Prochaine tâche :** Tâche 2.2 — Routes projects CRUD
 
 ---
 
@@ -32,24 +32,27 @@
 - `src/middlewares/error.middleware.ts` ✅
 - `src/routes/auth.routes.ts` ✅ (auth routes handler)
 
+### Phase 2 files
+
+- `src/services/github.service.ts` ✅ (GitHub API wrapper)
+- `src/types/github.types.ts` ✅ (Types + error classes)
+
 ### Dossiers créés (vides)
 
-- `src/services/`
 - `src/schemas/`
-- `src/types/`
 - `src/agent/tools/`
 
 ---
 
 ## Phase 2 — GitHub & Indexation
 
-| Tâche                           | Status | Date | Notes             |
-| ------------------------------- | ------ | ---- | ----------------- |
-| 2.1 — Client GitHub API         | ⏳     | -    | Requiert: Octokit |
-| 2.2 — Routes projects CRUD      | ⏳     | -    | -                 |
-| 2.3 — Service indexation        | ⏳     | -    | -                 |
-| 2.4 — Background job indexation | ⏳     | -    | -                 |
-| 2.5 — Routes GitHub proxy       | ⏳     | -    | -                 |
+| Tâche                           | Status | Date        | Notes                    |
+| ------------------------------- | ------ | ----------- | ------------------------ |
+| 2.1 — Client GitHub API         | ✅     | 18 Dec 2024 | GitHubService + types    |
+| 2.2 — Routes projects CRUD      | ⏳     | -           | -                        |
+| 2.3 — Service indexation        | ⏳     | -           | -                        |
+| 2.4 — Background job indexation | ⏳     | -           | -                        |
+| 2.5 — Routes GitHub proxy       | ⏳     | -           | -                        |
 
 ---
 
@@ -91,7 +94,7 @@
 | Package             | Pour             | Status         |
 | ------------------- | ---------------- | -------------- |
 | `better-auth`       | Authentification | ✅ Installé    |
-| `octokit`           | GitHub API       | ⏳ À installer |
+| `octokit`           | GitHub API       | ✅ Installé    |
 | `@anthropic-ai/sdk` | Claude API       | ⏳ À installer |
 
 ---
@@ -111,3 +114,4 @@
 | ----------- | ---------------------------------------------- | ---------------------------- |
 | 18 Dec 2024 | Init projet, Prisma schema, structure dossiers | Setup initial                |
 | 18 Dec 2024 | Auth BetterAuth, encryption, auth routes       | GitHub OAuth authentication  |
+| 18 Dec 2024 | GitHubService, types, error classes            | GitHub API client            |
