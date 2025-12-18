@@ -2,6 +2,7 @@ import { MeetingSource, MeetingStatus, Prisma } from '@prisma/client'
 import { db } from '../lib/db.js'
 import { NotFoundError, ForbiddenError, ValidationError } from '../lib/errors.js'
 import type { CreateMeetingInput, UpdateMeetingInput, MeetingListQuery } from '../schemas/meeting.schema.js'
+import { ParsingService } from './parsing.service.js'
 
 /**
  * Meeting Service
@@ -150,6 +151,11 @@ export class MeetingService {
           },
         },
       },
+    })
+
+    // Automatically trigger parsing in background (fire-and-forget)
+    ParsingService.parseMeeting(meeting.id, userId).catch((error) => {
+      console.error(`Failed to auto-parse meeting ${meeting.id}:`, error)
     })
 
     return meeting
