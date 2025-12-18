@@ -1,0 +1,48 @@
+{
+  "name": "distill-api",
+  "version": "1.0.0",
+  "description": "Backend API for Distill - Meeting Task Agent",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "api",
+    "hono",
+    "prisma",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.26.0",
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "prisma": "^6.19.1",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.7",
+    "@hono/zod-validator": "^0.7.6",
+    "@prisma/client": "^6.19.1",
+    "dotenv": "^17.2.3",
+    "hono": "^4.11.1",
+    "zod": "^4.2.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma"
+    ]
+  }
+}
