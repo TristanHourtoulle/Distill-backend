@@ -166,10 +166,21 @@ Only respond with valid JSON, no additional text.`
         throw new ValidationError('Invalid response from LLM')
       }
 
+      // Debug: log Claude's raw response
+      console.log('=== Claude Response ===')
+      console.log(textContent.text)
+      console.log('=== End Claude Response ===')
+
       // Parse JSON response
       let parsed: ParsedMeetingResult
       try {
-        const jsonStr = textContent.text.trim()
+        let jsonStr = textContent.text.trim()
+
+        // Handle markdown code blocks (```json ... ``` or ``` ... ```)
+        const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
+        if (codeBlockMatch && codeBlockMatch[1]) {
+          jsonStr = codeBlockMatch[1].trim()
+        }
         const rawParsed = JSON.parse(jsonStr) as {
           summary: string
           tasks: Array<{

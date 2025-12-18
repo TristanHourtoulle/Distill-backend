@@ -53,7 +53,7 @@ export type ParsingProgressCallback = (phase: string, message: string) => void
  * Default parsing configuration
  */
 export const DEFAULT_PARSING_CONFIG: ParsingConfig = {
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-3-5-haiku-20241022', // Haiku: ~10x cheaper than Sonnet, sufficient for task extraction
   maxTokens: 4096,
   temperature: 0.3,
 }
