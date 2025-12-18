@@ -6,7 +6,7 @@
 
 **Phase en cours :** Phase 4 — Agent d'analyse
 **Dernière mise à jour :** 18 Dec 2025
-**Prochaine tâche :** Tâche 4.2 — Config Claude function calling
+**Prochaine tâche :** Tâche 4.6 — Routes agent
 
 ---
 
@@ -94,11 +94,11 @@
 | Tâche                                | Status | Date        | Notes                         |
 | ------------------------------------ | ------ | ----------- | ----------------------------- |
 | 4.1 — Tools agent                    | ✅     | 18 Dec 2025 | 4 tools: list/read/search/imports |
-| 4.2 — Config Claude function calling | ⏳     | -           | -                             |
-| 4.3 — Orchestrator (boucle agent)    | ⏳     | -           | -                             |
-| 4.4 — Prompts système                | ⏳     | -           | -                             |
-| 4.5 — Parsing résultats              | ⏳     | -           | -                             |
-| 4.6 — Routes agent                   | ⏳     | -           | -                             |
+| 4.2 — Config Claude function calling | ✅     | 18 Dec 2025 | Anthropic SDK + tools           |
+| 4.3 — Orchestrator (boucle agent)    | ✅     | 18 Dec 2025 | Agent loop with tool execution  |
+| 4.4 — Prompts système                | ✅     | 18 Dec 2025 | System prompt builder           |
+| 4.5 — Parsing résultats              | ✅     | 18 Dec 2025 | JSON extraction + defaults      |
+| 4.6 — Routes agent                   | ⏳     | -           | -                               |
 
 ### Phase 4 files
 
@@ -108,6 +108,8 @@
 - `src/agent/tools/search-code.tool.ts` ✅ (Code search)
 - `src/agent/tools/get-imports.tool.ts` ✅ (Import analysis)
 - `src/agent/tools/index.ts` ✅ (Tool executor)
+- `src/agent/prompts.ts` ✅ (System prompts)
+- `src/agent/orchestrator.ts` ✅ (Agent loop)
 
 ---
 
@@ -154,3 +156,4 @@
 | 18 Dec 2025 | ParsingService, Claude SDK, task extraction    | LLM parsing complete         |
 | 18 Dec 2025 | ComplexityService, TaskService, tasks routes   | Phase 3 complete             |
 | 18 Dec 2025 | Agent tools: list_dir, read_file, search, imports | Agent tools ready       |
+| 18 Dec 2025 | Prompts, orchestrator, Claude function calling | Agent core complete       |
