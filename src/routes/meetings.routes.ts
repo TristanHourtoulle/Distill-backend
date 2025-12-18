@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { authMiddleware } from '../middlewares/auth.middleware.js'
 import { MeetingService } from '../services/meeting.service.js'
+import { ParsingService } from '../services/parsing.service.js'
 import {
   createMeetingSchema,
   updateMeetingSchema,
@@ -112,6 +113,52 @@ app.get('/:id/tasks', zValidator('param', meetingIdSchema), async (c) => {
   const meeting = await MeetingService.getById(id, userId)
 
   return c.json({ data: meeting.tasks })
+})
+
+// ============================================
+// Meeting Parsing
+// ============================================
+
+/**
+ * POST /meetings/:id/parse
+ * Parse meeting content and extract tasks using LLM
+ */
+app.post('/:id/parse', zValidator('param', meetingIdSchema), async (c) => {
+  const userId = c.get('userId')
+  const { id } = c.req.valid('param')
+
+  const result = await ParsingService.parseMeeting(id, userId)
+
+  return c.json({
+    data: {
+      summary: result.summary,
+      tasksCount: result.tasks.length,
+      metadata: result.metadata,
+      tokensUsed: result.tokensUsed,
+    },
+    message: `Successfully extracted ${result.tasks.length} tasks`,
+  })
+})
+
+/**
+ * POST /meetings/:id/reparse
+ * Re-parse meeting content (deletes existing tasks)
+ */
+app.post('/:id/reparse', zValidator('param', meetingIdSchema), async (c) => {
+  const userId = c.get('userId')
+  const { id } = c.req.valid('param')
+
+  const result = await ParsingService.reparseMeeting(id, userId)
+
+  return c.json({
+    data: {
+      summary: result.summary,
+      tasksCount: result.tasks.length,
+      metadata: result.metadata,
+      tokensUsed: result.tokensUsed,
+    },
+    message: `Re-parsed meeting, extracted ${result.tasks.length} tasks`,
+  })
 })
 
 export default app

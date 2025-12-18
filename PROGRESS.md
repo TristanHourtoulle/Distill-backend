@@ -6,7 +6,7 @@
 
 **Phase en cours :** Phase 3 — Meetings & Parsing
 **Dernière mise à jour :** 18 Dec 2025
-**Prochaine tâche :** Tâche 3.2 — Service parsing (LLM)
+**Prochaine tâche :** Tâche 3.3 — Estimation complexité
 
 ---
 
@@ -70,7 +70,7 @@
 | Tâche                       | Status | Date        | Notes                       |
 | --------------------------- | ------ | ----------- | --------------------------- |
 | 3.1 — Routes meetings CRUD  | ✅     | 18 Dec 2025 | Full CRUD + tasks endpoint  |
-| 3.2 — Service parsing (LLM) | ⏳     | -           | Requires: @anthropic-ai/sdk |
+| 3.2 — Service parsing (LLM) | ✅     | 18 Dec 2025 | Claude SDK + task extraction|
 | 3.3 — Estimation complexité | ⏳     | -           | -                           |
 | 3.4 — Routes tasks          | ⏳     | -           | -                           |
 
@@ -78,7 +78,9 @@
 
 - `src/schemas/meeting.schema.ts` ✅ (Zod validation for meetings)
 - `src/services/meeting.service.ts` ✅ (Meeting CRUD + stats)
-- `src/routes/meetings.routes.ts` ✅ (REST endpoints)
+- `src/routes/meetings.routes.ts` ✅ (REST endpoints + parsing)
+- `src/types/parsing.types.ts` ✅ (LLM parsing types)
+- `src/services/parsing.service.ts` ✅ (Claude SDK integration)
 
 ---
 
@@ -110,7 +112,7 @@
 | ------------------- | ---------------- | -------------- |
 | `better-auth`       | Authentification | ✅ Installé    |
 | `octokit`           | GitHub API       | ✅ Installé    |
-| `@anthropic-ai/sdk` | Claude API       | ⏳ À installer |
+| `@anthropic-ai/sdk` | Claude API       | ✅ Installé    |
 
 ---
 
@@ -135,3 +137,4 @@
 | 18 Dec 2025 | JobQueueService, job routes, progress tracking | Background job system        |
 | 18 Dec 2025 | GitHub proxy routes, verify endpoint           | Phase 2 complete             |
 | 18 Dec 2025 | Meeting schemas, service, routes               | Meetings CRUD complete       |
+| 18 Dec 2025 | ParsingService, Claude SDK, task extraction    | LLM parsing complete         |
