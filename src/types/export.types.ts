@@ -7,9 +7,9 @@
  * GitHub Issue export options
  */
 export interface GitHubIssueOptions {
-  labels?: string[]
-  assignees?: string[]
-  milestone?: number
+  labels?: string[] | undefined
+  assignees?: string[] | undefined
+  milestone?: number | undefined
 }
 
 /**
@@ -60,7 +60,7 @@ export interface ExportResult {
  */
 export interface BulkExportOptions {
   taskIds: string[]
-  options?: GitHubIssueOptions
+  options?: GitHubIssueOptions | undefined
 }
 
 /**
