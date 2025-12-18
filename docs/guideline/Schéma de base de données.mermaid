@@ -1,0 +1,153 @@
+erDiagram
+    %% ============================================
+    %% SCHEMA BASE DE DONNÉES - MEETING TASK AGENT
+    %% ============================================
+
+    USER ||--o{ PROJECT : "possède"
+    USER ||--o{ INTEGRATION : "configure"
+    USER {
+        uuid id PK
+        string email UK
+        string name
+        string avatar_url
+        string github_access_token "chiffré"
+        datetime created_at
+        datetime updated_at
+    }
+
+    PROJECT ||--o{ PROJECT_RULE : "a des règles"
+    PROJECT ||--o{ PROJECT_INDEX : "est indexé"
+    PROJECT ||--o{ MEETING : "reçoit"
+    PROJECT {
+        uuid id PK
+        uuid user_id FK
+        string github_repo_url
+        string github_owner
+        string github_repo_name
+        string default_branch "branche par défaut du repo"
+        string preferred_branch "branche préférée pour analyse, peut différer de default"
+        string name "nom affiché"
+        text description
+        json detected_stack "ex: nextjs, typescript, tailwind"
+        json structure_summary "carte projet condensée"
+        enum status "pending|indexing|ready|error"
+        datetime last_indexed_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    PROJECT_RULE {
+        uuid id PK
+        uuid project_id FK
+        enum type "must_do|must_not_do|convention|pattern"
+        text content "ex: Toujours utiliser Zustand"
+        int priority "ordre d'importance"
+        boolean is_active
+        datetime created_at
+    }
+
+    PROJECT_INDEX {
+        uuid id PK
+        uuid project_id FK
+        string file_path
+        string file_type "component|hook|api|util|config|other"
+        json exports "fonctions/composants exportés"
+        json imports "dépendances"
+        text summary "résumé généré par LLM"
+        int line_count
+        string last_commit_sha
+        datetime indexed_at
+    }
+
+    MEETING ||--o{ TASK : "génère"
+    MEETING {
+        uuid id PK
+        uuid project_id FK
+        string title
+        text raw_content "résumé brut de la réunion"
+        text parsed_summary "version structurée"
+        string reference_branch "branche à analyser, ex: develop, staging"
+        enum source "upload|paste|webhook"
+        json metadata "date réunion, participants, etc"
+        enum status "pending|processing|completed|error"
+        datetime meeting_date
+        datetime created_at
+    }
+
+    TASK ||--o{ TASK_ANALYSIS : "analysée par"
+    TASK ||--o{ TASK_EXPORT : "exportée vers"
+    TASK {
+        uuid id PK
+        uuid meeting_id FK
+        uuid project_id FK
+        string title
+        text description
+        enum type "feature|bugfix|modification|documentation|refactor"
+        enum complexity "simple|moderate|critical"
+        enum status "pending|analyzing|analyzed|exported|archived"
+        json impacted_files_preview "estimation rapide avant analyse"
+        int estimated_files_count
+        int priority "ordre dans la réunion"
+        datetime created_at
+        datetime updated_at
+    }
+
+    TASK_ANALYSIS {
+        uuid id PK
+        uuid task_id FK
+        json files_to_create "path, description, template suggéré"
+        json files_to_modify "path, lignes, changements"
+        json implementation_steps "étapes ordonnées"
+        json risks "risques identifiés"
+        json dependencies "autres tâches liées"
+        text reasoning "explication du LLM"
+        int tokens_used
+        int tool_calls_count
+        enum status "running|completed|failed"
+        text error_message
+        datetime started_at
+        datetime completed_at
+    }
+
+    INTEGRATION {
+        uuid id PK
+        uuid user_id FK
+        enum type "github_issues|notion|jira|linear"
+        json config "workspace_id, database_id, project_key, etc"
+        string access_token "chiffré"
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+
+    TASK_EXPORT {
+        uuid id PK
+        uuid task_id FK
+        uuid integration_id FK
+        string external_id "ID issue/page créée"
+        string external_url
+        json exported_content "snapshot de ce qui a été envoyé"
+        enum status "pending|success|failed"
+        text error_message
+        datetime exported_at
+    }
+
+    AGENT_LOG {
+        uuid id PK
+        uuid task_analysis_id FK
+        int step_number
+        enum action_type "list_dir|read_file|search_code|get_imports|thinking"
+        string action_input "paramètres de l'outil"
+        text action_output "résultat tronqué"
+        int tokens_in
+        int tokens_out
+        int duration_ms
+        datetime created_at
+    }
+
+    %% ============================================
+    %% RELATIONS VISUELLES
+    %% ============================================
+    
+    TASK_ANALYSIS ||--o{ AGENT_LOG : "trace"
+    INTEGRATION ||--o{ TASK_EXPORT : "utilisée pour"

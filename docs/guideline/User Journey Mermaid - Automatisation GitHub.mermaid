@@ -1,0 +1,86 @@
+flowchart TD
+    subgraph ONBOARDING["🚀 Onboarding"]
+        A[Inscription / Connexion] --> B[Connexion OAuth GitHub]
+        B --> C[Sélection du repo à analyser]
+        C --> D[Configuration projet]
+        D --> D1[Règles de code / Conventions]
+        D --> D2[Stack technique détectée]
+        D --> D3[Intégrations externes<br/>GitHub Issues / Notion / Jira]
+    end
+
+    subgraph INDEXATION["🔍 Indexation du repo"]
+        D1 & D2 & D3 --> E[Indexation automatique]
+        E --> E1[Arborescence complète]
+        E --> E2[Signatures fonctions/composants]
+        E --> E3[Patterns détectés]
+        E --> E4[Dépendances & imports]
+        E1 & E2 & E3 & E4 --> F[/"Carte projet" générée<br/>~2-5k tokens/]
+    end
+
+    subgraph INPUT["📥 Entrée réunion"]
+        F --> G{Réception résumé réunion}
+        G --> G1[Upload fichier]
+        G --> G2[Copier/coller texte]
+        G --> G3[Webhook automatique]
+    end
+
+    subgraph EXTRACTION["🧠 Extraction des tâches"]
+        G1 & G2 & G3 --> H[LLM Parse le résumé]
+        H --> I[Liste de tâches brutes]
+        I --> J[Catégorisation automatique]
+        J --> J1[🆕 Nouvelle feature]
+        J --> J2[🐛 Bug fix]
+        J --> J3[✏️ Modification existante]
+        J --> J4[📚 Documentation]
+    end
+
+    subgraph IMPACT["⚡ Analyse d'impact rapide"]
+        J1 & J2 & J3 & J4 --> K[Pré-analyse par tâche]
+        K --> L{Estimation complexité}
+        L --> L1[🟢 Simple<br/>1-2 fichiers]
+        L --> L2[🟡 Modéré<br/>3-5 fichiers]
+        L --> L3[🔴 Critique<br/>6+ fichiers]
+    end
+
+    subgraph DASHBOARD["📋 Dashboard tâches"]
+        L1 & L2 & L3 --> M[Liste des tâches avec badges]
+        M --> N{Sélection d'une tâche}
+    end
+
+    subgraph AGENT["🤖 Agent d'analyse profonde"]
+        N --> O[Lancement Agent]
+        O --> P[Exploration du repo]
+        P --> P1[Lecture fichiers pertinents]
+        P --> P2[Analyse des dépendances]
+        P --> P3[Détection patterns existants]
+        P1 & P2 & P3 --> Q[Génération plan d'action]
+        Q --> Q1[Fichiers à créer]
+        Q --> Q2[Fichiers à modifier + lignes]
+        Q --> Q3[Étapes détaillées]
+        Q --> Q4[Risques identifiés]
+    end
+
+    subgraph OUTPUT["📤 Création de la tâche"]
+        Q1 & Q2 & Q3 & Q4 --> R[Prévisualisation tâche enrichie]
+        R --> S{Export vers}
+        S --> S1[GitHub Issue]
+        S --> S2[Notion]
+        S --> S3[Jira]
+        S --> S4[Linear]
+        S --> S5[Copie manuelle]
+    end
+
+    subgraph ITERATION["🔄 Itération"]
+        S1 & S2 & S3 & S4 & S5 --> T[Retour au dashboard]
+        T --> N
+    end
+
+    style ONBOARDING fill:#1a1a2e,stroke:#4a4a6a,color:#fff
+    style INDEXATION fill:#16213e,stroke:#4a4a6a,color:#fff
+    style INPUT fill:#0f3460,stroke:#4a4a6a,color:#fff
+    style EXTRACTION fill:#1a1a2e,stroke:#4a4a6a,color:#fff
+    style IMPACT fill:#16213e,stroke:#4a4a6a,color:#fff
+    style DASHBOARD fill:#0f3460,stroke:#4a4a6a,color:#fff
+    style AGENT fill:#1a1a2e,stroke:#4a4a6a,color:#fff
+    style OUTPUT fill:#16213e,stroke:#4a4a6a,color:#fff
+    style ITERATION fill:#0f3460,stroke:#4a4a6a,color:#fff
