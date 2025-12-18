@@ -6,32 +6,34 @@
 
 **Phase en cours :** Phase 1 — Fondations
 **Dernière mise à jour :** 18 Dec 2024
-**Prochaine tâche :** Tâche 1.3 — Authentification BetterAuth
+**Prochaine tâche :** Tâche 2.1 — Client GitHub API
 
 ---
 
 ## Phase 1 — Fondations
 
-| Tâche                                      | Status | Date        | Notes                         |
-| ------------------------------------------ | ------ | ----------- | ----------------------------- |
-| 1.1 — Init projet (package.json, tsconfig) | ✅     | 18 Dec 2024 | Hono, Prisma, Zod, TypeScript |
-| 1.2 — Schema Prisma                        | ✅     | 18 Dec 2024 | Tous les modèles créés        |
-| 1.3 — Auth BetterAuth                      | ⏳     | -           | À faire                       |
-| 1.4 — Middlewares de base                  | 🚧     | 18 Dec 2024 | error.middleware.ts créé      |
+| Tâche                                      | Status | Date        | Notes                              |
+| ------------------------------------------ | ------ | ----------- | ---------------------------------- |
+| 1.1 — Init projet (package.json, tsconfig) | ✅     | 18 Dec 2024 | Hono, Prisma, Zod, TypeScript      |
+| 1.2 — Schema Prisma                        | ✅     | 18 Dec 2024 | Tous les modèles créés             |
+| 1.3 — Auth BetterAuth                      | ✅     | 18 Dec 2024 | GitHub OAuth configured            |
+| 1.4 — Middlewares de base                  | 🚧     | 18 Dec 2024 | error.middleware.ts créé           |
 
 ### Fichiers créés
 
 - `package.json` ✅
 - `tsconfig.json` ✅
-- `prisma/schema.prisma` ✅
+- `prisma/schema.prisma` ✅ (updated with BetterAuth tables)
 - `src/index.ts` ✅
 - `src/lib/db.ts` ✅
 - `src/lib/errors.ts` ✅
+- `src/lib/auth.ts` ✅ (BetterAuth configuration)
+- `src/lib/encryption.ts` ✅ (AES-256-GCM token encryption)
 - `src/middlewares/error.middleware.ts` ✅
+- `src/routes/auth.routes.ts` ✅ (auth routes handler)
 
 ### Dossiers créés (vides)
 
-- `src/routes/`
 - `src/services/`
 - `src/schemas/`
 - `src/types/`
@@ -88,7 +90,7 @@
 
 | Package             | Pour             | Status         |
 | ------------------- | ---------------- | -------------- |
-| `better-auth`       | Authentification | ⏳ À installer |
+| `better-auth`       | Authentification | ✅ Installé    |
 | `octokit`           | GitHub API       | ⏳ À installer |
 | `@anthropic-ai/sdk` | Claude API       | ⏳ À installer |
 
@@ -105,6 +107,7 @@
 
 ## Historique des sessions
 
-| Date        | Tâches complétées                              | Notes         |
-| ----------- | ---------------------------------------------- | ------------- |
-| 18 Dec 2024 | Init projet, Prisma schema, structure dossiers | Setup initial |
+| Date        | Tâches complétées                              | Notes                        |
+| ----------- | ---------------------------------------------- | ---------------------------- |
+| 18 Dec 2024 | Init projet, Prisma schema, structure dossiers | Setup initial                |
+| 18 Dec 2024 | Auth BetterAuth, encryption, auth routes       | GitHub OAuth authentication  |
