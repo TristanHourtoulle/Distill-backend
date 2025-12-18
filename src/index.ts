@@ -9,6 +9,7 @@ import authRoutes from './routes/auth.routes.js'
 import projectsRoutes from './routes/projects.routes.js'
 import jobsRoutes from './routes/jobs.routes.js'
 import githubRoutes from './routes/github.routes.js'
+import meetingsRoutes from './routes/meetings.routes.js'
 import { JobQueueService } from './services/job-queue.service.js'
 
 const app = new Hono()
@@ -26,6 +27,7 @@ app.route('/api/auth', authRoutes)
 app.route('/api/projects', projectsRoutes)
 app.route('/api/jobs', jobsRoutes)
 app.route('/api/github', githubRoutes)
+app.route('/api/meetings', meetingsRoutes)
 
 // Health check endpoint
 app.get('/health', (c) => {
