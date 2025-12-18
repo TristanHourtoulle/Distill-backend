@@ -13,6 +13,7 @@ export const auth = betterAuth({
       clientId: process.env['GITHUB_CLIENT_ID'] ?? '',
       clientSecret: process.env['GITHUB_CLIENT_SECRET'] ?? '',
       scope: ['read:user', 'user:email', 'repo'],
+      redirectURI: `${process.env['BETTER_AUTH_URL'] ?? 'http://localhost:4000'}/api/auth/callback/github`,
     },
   },
   session: {
@@ -22,6 +23,13 @@ export const auth = betterAuth({
     },
     expiresIn: 60 * 60 * 24 * 7, // 7 days
     updateAge: 60 * 60 * 24, // 1 day
+  },
+  // Redirect to frontend after successful OAuth
+  callbacks: {
+    redirect: {
+      afterSignIn: () => `${process.env['FRONTEND_URL'] ?? 'http://localhost:3000'}/dashboard`,
+      afterSignUp: () => `${process.env['FRONTEND_URL'] ?? 'http://localhost:3000'}/dashboard`,
+    },
   },
 })
 

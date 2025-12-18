@@ -28,7 +28,7 @@ app.onError((err, c) => {
     const appErr = err as { message?: string; statusCode: number; code: string }
     return c.json(
       { error: appErr.message ?? 'Error', code: appErr.code },
-      appErr.statusCode as 400 | 401 | 403 | 404 | 409 | 500 | 502
+      appErr.statusCode as 400 | 401 | 403 | 404 | 409 | 429 | 500 | 502
     )
   }
 

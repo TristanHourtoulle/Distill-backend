@@ -11,6 +11,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
+    "prisma:reset": "prisma migrate reset",
+    "db:reset": "prisma migrate reset --force && prisma generate",
     "lint": "tsc --noEmit"
   },
   "keywords": [
