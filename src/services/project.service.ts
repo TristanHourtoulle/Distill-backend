@@ -77,11 +77,8 @@ export class ProjectService {
       throw new ValidationError('Invalid GitHub repository URL')
     }
 
-    // Check if user has access to the repository
-    const hasAccess = await GitHubService.checkRepoAccess(userId, input.githubRepoUrl)
-    if (!hasAccess) {
-      throw new ForbiddenError('No access to this repository. Make sure you have the correct permissions.')
-    }
+    // Check if user has access to the repository (throws specific error if not)
+    await GitHubService.checkRepoAccess(userId, input.githubRepoUrl)
 
     // Check if project already exists for this repo
     const existing = await db.project.findFirst({
@@ -100,7 +97,7 @@ export class ProjectService {
     const repoInfo = await GitHubService.getRepoInfo(userId, parsed.owner, parsed.repo)
 
     // Create the project
-    return db.project.create({
+    const project = await db.project.create({
       data: {
         userId,
         githubRepoUrl: input.githubRepoUrl,
@@ -113,6 +110,11 @@ export class ProjectService {
         status: 'pending',
       },
     })
+
+    // Automatically queue indexation job
+    JobQueueService.queueIndexation(project.id, userId, 'normal')
+
+    return project
   }
 
   /**

@@ -371,19 +371,16 @@ export class GitHubService {
 
   /**
    * Check if the user has access to a repository
+   * Throws specific errors to help diagnose issues
    */
-  static async checkRepoAccess(userId: string, repoUrl: string): Promise<boolean> {
-    try {
-      const parsed = this.parseRepoUrl(repoUrl)
-      if (!parsed) {
-        return false
-      }
-
-      await this.getRepoInfo(userId, parsed.owner, parsed.repo)
-      return true
-    } catch {
-      return false
+  static async checkRepoAccess(userId: string, repoUrl: string): Promise<void> {
+    const parsed = this.parseRepoUrl(repoUrl)
+    if (!parsed) {
+      throw new Error('Invalid GitHub repository URL format')
     }
+
+    // This will throw GitHubAuthError if no token, or GitHubAccessError if no access
+    await this.getRepoInfo(userId, parsed.owner, parsed.repo)
   }
 
   /**

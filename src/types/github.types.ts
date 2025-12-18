@@ -60,15 +60,21 @@ export interface SearchResult {
   }>
 }
 
-// Error types
+// Error types with statusCode and code for proper HTTP responses
 export class GitHubAuthError extends Error {
-  constructor(message = 'GitHub authentication failed') {
+  public statusCode = 401
+  public code = 'GITHUB_AUTH_ERROR'
+
+  constructor(message = 'GitHub authentication failed. Please reconnect your GitHub account.') {
     super(message)
     this.name = 'GitHubAuthError'
   }
 }
 
 export class GitHubAccessError extends Error {
+  public statusCode = 403
+  public code = 'GITHUB_ACCESS_DENIED'
+
   constructor(message = 'No access to this repository') {
     super(message)
     this.name = 'GitHubAccessError'
@@ -76,6 +82,8 @@ export class GitHubAccessError extends Error {
 }
 
 export class GitHubRateLimitError extends Error {
+  public statusCode = 429
+  public code = 'GITHUB_RATE_LIMIT'
   public retryAfter: number
 
   constructor(retryAfter: number) {
@@ -86,6 +94,9 @@ export class GitHubRateLimitError extends Error {
 }
 
 export class GitHubNotFoundError extends Error {
+  public statusCode = 404
+  public code = 'GITHUB_NOT_FOUND'
+
   constructor(resource: string) {
     super(`GitHub resource not found: ${resource}`)
     this.name = 'GitHubNotFoundError'
