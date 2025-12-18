@@ -4,9 +4,9 @@
 
 ## État actuel
 
-**Phase en cours :** Phase 2 — GitHub & Indexation
+**Phase en cours :** Phase 3 — Meetings & Parsing
 **Dernière mise à jour :** 18 Dec 2025
-**Prochaine tâche :** Tâche 2.5 — Routes GitHub proxy
+**Prochaine tâche :** Tâche 3.1 — Routes meetings CRUD
 
 ---
 
@@ -44,6 +44,7 @@
 - `src/schemas/project.schema.ts` ✅ (Zod validation)
 - `src/routes/projects.routes.ts` ✅ (CRUD + rules + indexation endpoints)
 - `src/routes/jobs.routes.ts` ✅ (Job management endpoints)
+- `src/routes/github.routes.ts` ✅ (GitHub API proxy endpoints)
 - `src/middlewares/auth.middleware.ts` ✅ (Session validation)
 
 ### Dossiers créés (vides)
@@ -60,7 +61,7 @@
 | 2.2 — Routes projects CRUD      | ✅     | 18 Dec 2025 | Full CRUD + rules                  |
 | 2.3 — Service indexation        | ✅     | 18 Dec 2025 | File analysis + stack detection    |
 | 2.4 — Background job indexation | ✅     | 18 Dec 2025 | Job queue + progress tracking      |
-| 2.5 — Routes GitHub proxy       | ⏳     | -           | -                                  |
+| 2.5 — Routes GitHub proxy       | ✅     | 18 Dec 2025 | Proxy endpoints for frontend       |
 
 ---
 
@@ -126,3 +127,4 @@
 | 18 Dec 2025 | Projects CRUD, schemas, auth middleware        | Full project management      |
 | 18 Dec 2025 | IndexationService, types, stack detection      | Code indexation service      |
 | 18 Dec 2025 | JobQueueService, job routes, progress tracking | Background job system        |
+| 18 Dec 2025 | GitHub proxy routes, verify endpoint           | Phase 2 complete             |
