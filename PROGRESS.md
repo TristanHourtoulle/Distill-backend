@@ -6,7 +6,7 @@
 
 **Phase en cours :** Phase 4 — Agent d'analyse
 **Dernière mise à jour :** 18 Dec 2025
-**Prochaine tâche :** Tâche 4.1 — Tools agent
+**Prochaine tâche :** Tâche 4.2 — Config Claude function calling
 
 ---
 
@@ -91,14 +91,23 @@
 
 ## Phase 4 — Agent d'analyse
 
-| Tâche                                | Status | Date | Notes |
-| ------------------------------------ | ------ | ---- | ----- |
-| 4.1 — Tools agent                    | ⏳     | -    | -     |
-| 4.2 — Config Claude function calling | ⏳     | -    | -     |
-| 4.3 — Orchestrator (boucle agent)    | ⏳     | -    | -     |
-| 4.4 — Prompts système                | ⏳     | -    | -     |
-| 4.5 — Parsing résultats              | ⏳     | -    | -     |
-| 4.6 — Routes agent                   | ⏳     | -    | -     |
+| Tâche                                | Status | Date        | Notes                         |
+| ------------------------------------ | ------ | ----------- | ----------------------------- |
+| 4.1 — Tools agent                    | ✅     | 18 Dec 2025 | 4 tools: list/read/search/imports |
+| 4.2 — Config Claude function calling | ⏳     | -           | -                             |
+| 4.3 — Orchestrator (boucle agent)    | ⏳     | -           | -                             |
+| 4.4 — Prompts système                | ⏳     | -           | -                             |
+| 4.5 — Parsing résultats              | ⏳     | -           | -                             |
+| 4.6 — Routes agent                   | ⏳     | -           | -                             |
+
+### Phase 4 files
+
+- `src/types/agent.types.ts` ✅ (Agent tool types)
+- `src/agent/tools/list-dir.tool.ts` ✅ (Directory listing)
+- `src/agent/tools/read-file.tool.ts` ✅ (File reading)
+- `src/agent/tools/search-code.tool.ts` ✅ (Code search)
+- `src/agent/tools/get-imports.tool.ts` ✅ (Import analysis)
+- `src/agent/tools/index.ts` ✅ (Tool executor)
 
 ---
 
@@ -144,3 +153,4 @@
 | 18 Dec 2025 | Meeting schemas, service, routes               | Meetings CRUD complete       |
 | 18 Dec 2025 | ParsingService, Claude SDK, task extraction    | LLM parsing complete         |
 | 18 Dec 2025 | ComplexityService, TaskService, tasks routes   | Phase 3 complete             |
+| 18 Dec 2025 | Agent tools: list_dir, read_file, search, imports | Agent tools ready       |
