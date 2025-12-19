@@ -209,6 +209,8 @@ export class GitHubService {
     const octokit = await this.getClient(userId)
 
     try {
+      console.log(`[GitHubService.getTree] Fetching tree for ${owner}/${repo}@${branch}`)
+
       // Get the branch reference to get the tree SHA
       const { data: refData } = await octokit.rest.git.getRef({
         owner,
@@ -217,6 +219,7 @@ export class GitHubService {
       })
 
       const commitSha = refData.object.sha
+      console.log(`[GitHubService.getTree] Commit SHA: ${commitSha}`)
 
       // Get the commit to get the tree SHA
       const { data: commitData } = await octokit.rest.git.getCommit({
@@ -225,6 +228,8 @@ export class GitHubService {
         commit_sha: commitSha,
       })
 
+      console.log(`[GitHubService.getTree] Tree SHA: ${commitData.tree.sha}`)
+
       // Get the full tree recursively
       const { data: treeData } = await octokit.rest.git.getTree({
         owner,
@@ -232,6 +237,11 @@ export class GitHubService {
         tree_sha: commitData.tree.sha,
         recursive: 'true',
       })
+
+      console.log(`[GitHubService.getTree] Raw tree items: ${treeData.tree.length}`)
+      if (treeData.tree.length > 0) {
+        console.log(`[GitHubService.getTree] First 5 items:`, treeData.tree.slice(0, 5).map(i => ({ path: i.path, type: i.type })))
+      }
 
       const nodes: TreeNode[] = []
 
@@ -255,8 +265,14 @@ export class GitHubService {
         nodes.push(node)
       }
 
+      console.log(`[GitHubService.getTree] Processed nodes: ${nodes.length}`)
+      if (nodes.length > 0) {
+        console.log(`[GitHubService.getTree] First 5 processed:`, nodes.slice(0, 5).map(n => ({ path: n.path, type: n.type })))
+      }
+
       return nodes
     } catch (error) {
+      console.error(`[GitHubService.getTree] Error:`, error)
       this.handleError(error, `tree of ${owner}/${repo}@${branch}`)
     }
   }

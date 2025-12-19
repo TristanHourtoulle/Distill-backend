@@ -52,9 +52,41 @@ Best practices:
 function matchesPattern(filePath: string, pattern?: string): boolean {
   if (!pattern) return true
 
-  // Simple pattern matching
-  // Support: *.ext, folder/*, folder/**/*.ext
-  const normalizedPattern = pattern.replace(/\./g, '\\.').replace(/\*\*/g, '{{DOUBLESTAR}}').replace(/\*/g, '[^/]*').replace(/\{\{DOUBLESTAR\}\}/g, '.*')
+  // Handle comma-separated patterns (e.g., "*.ts,*.tsx")
+  if (pattern.includes(',')) {
+    const patterns = pattern.split(',').map(p => p.trim())
+    return patterns.some(p => matchesSinglePattern(filePath, p))
+  }
+
+  return matchesSinglePattern(filePath, pattern)
+}
+
+/**
+ * Check if a file matches a single pattern
+ */
+function matchesSinglePattern(filePath: string, pattern: string): boolean {
+  // Handle common patterns more flexibly
+  // *.ts or *.tsx should match any .ts or .tsx file anywhere in the tree
+  // src/*.ts should match files in src/ directory only
+  // **/*.ts should match any .ts file anywhere
+
+  // If pattern starts with *, treat it as matching any path ending with that extension
+  if (pattern.startsWith('*') && !pattern.includes('/')) {
+    // Pattern like *.ts or *.tsx - match extension anywhere
+    const extensionPattern = pattern.substring(1) // Remove leading *
+      .replace(/\./g, '\\.')
+      .replace(/\*/g, '.*')
+    const regex = new RegExp(`${extensionPattern}$`, 'i')
+    return regex.test(filePath)
+  }
+
+  // Full pattern matching for paths with directories
+  // Support: folder/*, folder/**/*.ext
+  const normalizedPattern = pattern
+    .replace(/\./g, '\\.')
+    .replace(/\*\*/g, '{{DOUBLESTAR}}')
+    .replace(/\*/g, '[^/]*')
+    .replace(/\{\{DOUBLESTAR\}\}/g, '.*')
 
   const regex = new RegExp(`^${normalizedPattern}$`)
   return regex.test(filePath)
@@ -102,6 +134,13 @@ export async function searchCode(
       ? githubResults.filter((r) => matchesPattern(r.path, filePattern))
       : githubResults
 
+    // If GitHub search returns no results, fall back to manual search
+    // GitHub Code Search API has limitations (repo must be indexed, rate limits, etc.)
+    if (filtered.length === 0) {
+      console.log(`[search_code] GitHub API returned 0 results for "${query}", falling back to manual search`)
+      return searchCodeManually(input, context, options)
+    }
+
     // Map to our format
     const results: SearchResult[] = filtered.slice(0, maxResults).map((r) => ({
       file: r.path,
@@ -115,8 +154,9 @@ export async function searchCode(
       totalMatches: filtered.length,
       truncated: filtered.length > maxResults,
     }
-  } catch {
+  } catch (error) {
     // Fallback to manual search through files
+    console.log(`[search_code] GitHub API error, falling back to manual search:`, error instanceof Error ? error.message : error)
     return searchCodeManually(input, context, options)
   }
 }
@@ -133,6 +173,8 @@ async function searchCodeManually(
   const { query, filePattern } = input
   const maxResults = Math.min(input.maxResults ?? 20, options.maxResults ?? 50)
 
+  console.log(`[search_code] Manual search starting for query: "${query}", pattern: "${filePattern || 'none'}"`)
+
   // Get file tree
   const tree = await GitHubService.getTree(
     context.userId,
@@ -140,6 +182,8 @@ async function searchCodeManually(
     context.repo,
     context.branch
   )
+
+  console.log(`[search_code] Tree has ${tree.length} total nodes`)
 
   // Filter to only files, excluding common non-code files
   const codeFiles = tree.filter((item) => {
@@ -173,11 +217,18 @@ async function searchCodeManually(
     return matchesPattern(item.path, filePattern)
   })
 
+  console.log(`[search_code] Filtered to ${codeFiles.length} searchable files`)
+  if (codeFiles.length > 0) {
+    console.log(`[search_code] First 5 files to search:`, codeFiles.slice(0, 5).map(f => f.path))
+  }
+
   const results: SearchResult[] = []
   const queryLower = query.toLowerCase()
 
   // Search through files (limit to avoid timeout)
   const filesToSearch = codeFiles.slice(0, 100) // Limit files to search
+  let filesSearched = 0
+  let filesWithErrors = 0
 
   for (const file of filesToSearch) {
     if (results.length >= maxResults) break
@@ -191,6 +242,7 @@ async function searchCodeManually(
         context.branch
       )
 
+      filesSearched++
       const lines = fileData.content.split('\n')
 
       for (let i = 0; i < lines.length; i++) {
@@ -208,9 +260,12 @@ async function searchCodeManually(
       }
     } catch {
       // Skip files that can't be read
+      filesWithErrors++
       continue
     }
   }
+
+  console.log(`[search_code] Searched ${filesSearched} files, ${filesWithErrors} errors, found ${results.length} matches`)
 
   return {
     query,

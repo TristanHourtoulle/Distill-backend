@@ -55,6 +55,8 @@ export async function listDir(
   // Normalize path
   const normalizedPath = path === '/' || path === '' ? '' : path.replace(/^\//, '')
 
+  console.log(`[list_dir] Input path: "${path}", normalized: "${normalizedPath}", maxDepth: ${maxDepth}`)
+
   // Get tree from GitHub
   const tree = await GitHubService.getTree(
     context.userId,
@@ -63,13 +65,16 @@ export async function listDir(
     context.branch
   )
 
+  console.log(`[list_dir] Tree returned ${tree.length} nodes`)
+
   // Filter entries for the requested path
   const entries: FileEntry[] = []
   const seenDirs = new Set<string>()
+  const seenFiles = new Set<string>()
 
   for (const item of tree) {
     // Check if item is in the requested directory
-    let itemPath = item.path
+    const itemPath = item.path
     let relativePath: string
 
     if (normalizedPath === '') {
@@ -82,33 +87,43 @@ export async function listDir(
       continue // Not in requested directory
     }
 
-    // Check depth
-    const depth = relativePath.split('/').length
-    if (depth > maxDepth) {
-      continue
-    }
+    // Get the first component of the relative path
+    const pathParts = relativePath.split('/')
+    const firstName = pathParts[0]
+    if (!firstName) continue
 
-    // For files, add directly
-    if (item.type === 'file') {
-      // Only add if it's directly in the path (depth 1) or within maxDepth
-      if (depth === 1 || maxDepth > 1) {
+    // If the path has multiple components, it means there's an implicit directory
+    if (pathParts.length > 1) {
+      // This is a nested item - infer the top-level directory
+      if (!seenDirs.has(firstName)) {
+        seenDirs.add(firstName)
         entries.push({
-          name: relativePath.split('/').pop() ?? relativePath,
-          path: item.path,
-          type: 'file',
-          size: item.size,
-        })
-      }
-    } else if (item.type === 'directory') {
-      // For directories, track unique directories
-      const dirName = relativePath.split('/')[0]
-      if (dirName && !seenDirs.has(dirName)) {
-        seenDirs.add(dirName)
-        entries.push({
-          name: dirName,
-          path: normalizedPath ? `${normalizedPath}/${dirName}` : dirName,
+          name: firstName,
+          path: normalizedPath ? `${normalizedPath}/${firstName}` : firstName,
           type: 'directory',
         })
+      }
+    } else {
+      // This is a direct child (depth 1)
+      if (item.type === 'file') {
+        if (!seenFiles.has(firstName)) {
+          seenFiles.add(firstName)
+          entries.push({
+            name: firstName,
+            path: item.path,
+            type: 'file',
+            size: item.size,
+          })
+        }
+      } else if (item.type === 'directory') {
+        if (!seenDirs.has(firstName)) {
+          seenDirs.add(firstName)
+          entries.push({
+            name: firstName,
+            path: normalizedPath ? `${normalizedPath}/${firstName}` : firstName,
+            type: 'directory',
+          })
+        }
       }
     }
   }
@@ -124,6 +139,11 @@ export async function listDir(
   // Apply limit
   const maxResults = options.maxResults ?? 100
   const truncated = entries.length > maxResults
+
+  console.log(`[list_dir] Found ${entries.length} entries (${seenDirs.size} dirs, ${seenFiles.size} files)`)
+  if (entries.length > 0) {
+    console.log(`[list_dir] First 10 entries:`, entries.slice(0, 10).map(e => ({ name: e.name, type: e.type })))
+  }
 
   return {
     path: normalizedPath || '/',
