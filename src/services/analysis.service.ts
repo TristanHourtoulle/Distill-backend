@@ -12,6 +12,7 @@ import {
   type AgentStats,
   type AgentProgressCallback,
   type OrchestratorConfig,
+  type StreamingOptions,
 } from '../agent/orchestrator.js'
 import type { ToolResult } from '../types/agent.types.js'
 
@@ -27,7 +28,8 @@ export class AnalysisService {
     taskId: string,
     userId: string,
     config?: Partial<OrchestratorConfig>,
-    onProgress?: AgentProgressCallback
+    onProgress?: AgentProgressCallback,
+    streaming?: StreamingOptions
   ): Promise<{
     analysisId: string
     result: AnalysisResult
@@ -76,7 +78,8 @@ export class AnalysisService {
         taskId,
         userId,
         config,
-        onProgress
+        onProgress,
+        streaming
       )
 
       // Save agent logs

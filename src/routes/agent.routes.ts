@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { zValidator } from '@hono/zod-validator'
 import { authMiddleware } from '../middlewares/auth.middleware.js'
 import { AnalysisService } from '../services/analysis.service.js'
+import { createSSEResponse, SSEWriter, createKeepAlive } from '../lib/sse.js'
+import type { StreamEvent } from '../types/streaming.types.js'
 
 const app = new Hono()
 
@@ -53,6 +55,73 @@ app.post('/analyze/:taskId', zValidator('param', taskIdSchema), async (c) => {
       stats,
     },
     message: 'Analysis completed successfully',
+  })
+})
+
+/**
+ * GET /agent/analyze/:taskId/stream
+ * Start analysis with real-time SSE streaming
+ *
+ * Query params:
+ * - includeToolResults: boolean (default: true) - Include tool execution results
+ * - includeThinking: boolean (default: false) - Include AI thinking content
+ *
+ * Events emitted:
+ * - phase: Current analysis phase (initializing, loading, analyzing, tool_execution, parsing, complete)
+ * - tool_call: When AI calls a tool (read_file, list_dir, etc.)
+ * - tool_result: Result of a tool call
+ * - thinking: AI thinking/reasoning content (if includeThinking=true)
+ * - progress: Stats update (iterations, tokens, duration)
+ * - file_discovered: When a file to create/modify is identified
+ * - result: Final analysis result
+ * - error: If an error occurs
+ */
+app.get('/analyze/:taskId/stream', zValidator('param', taskIdSchema), async (c) => {
+  const userId = c.get('userId')
+  const { taskId } = c.req.valid('param')
+
+  // Parse query options
+  const includeToolResults = c.req.query('includeToolResults') !== 'false'
+  const includeThinking = c.req.query('includeThinking') === 'true'
+
+  return createSSEResponse(async (writer: SSEWriter) => {
+    // Set up keep-alive
+    const stopKeepAlive = createKeepAlive(writer)
+
+    try {
+      // Run analysis with streaming
+      await AnalysisService.startAnalysis(
+        taskId,
+        userId,
+        undefined, // Use default config
+        undefined, // No legacy progress callback
+        {
+          onStreamEvent: async (event: StreamEvent) => {
+            await writer.sendEvent(event)
+          },
+          includeToolResults,
+          includeThinking,
+        }
+      )
+    } catch (error) {
+      // Emit error event
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorCode = error instanceof Error && 'code' in error
+        ? String((error as { code?: string }).code)
+        : 'UNKNOWN_ERROR'
+
+      await writer.sendEvent({
+        type: 'error',
+        timestamp: Date.now(),
+        code: errorCode,
+        message: errorMessage,
+        recoverable: false,
+      })
+    } finally {
+      // Clean up
+      stopKeepAlive()
+      await writer.close()
+    }
   })
 })
 

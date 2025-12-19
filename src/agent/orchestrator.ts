@@ -10,6 +10,7 @@ import { AppError } from '../lib/errors.js'
 import { buildSystemPrompt } from './prompts.js'
 import { getAnthropicTools, executeTool, formatToolResult, type ToolName } from './tools/index.js'
 import type { AgentContext, ToolResult } from '../types/agent.types.js'
+import type { StreamEvent, StreamEventEmitter } from '../types/streaming.types.js'
 
 /**
  * Analysis result structure (enhanced for detailed GitHub Issues)
@@ -217,13 +218,89 @@ export const DEFAULT_ORCHESTRATOR_CONFIG: OrchestratorConfig = {
 }
 
 /**
- * Progress callback for tracking agent progress
+ * Progress callback for tracking agent progress (legacy)
  */
 export type AgentProgressCallback = (
   phase: string,
   message: string,
   stats: Partial<AgentStats>
 ) => void
+
+/**
+ * Streaming callback options
+ */
+export interface StreamingOptions {
+  /** Emit streaming events for real-time updates */
+  onStreamEvent?: StreamEventEmitter
+  /** Include detailed tool results in stream */
+  includeToolResults?: boolean
+  /** Include AI thinking/text content in stream */
+  includeThinking?: boolean
+}
+
+/**
+ * Helper to create a stream event with timestamp
+ */
+function createStreamEvent<T extends StreamEvent['type']>(
+  type: T,
+  data: Omit<Extract<StreamEvent, { type: T }>, 'type' | 'timestamp'>
+): Extract<StreamEvent, { type: T }> {
+  return {
+    type,
+    timestamp: Date.now(),
+    ...data,
+  } as Extract<StreamEvent, { type: T }>
+}
+
+/**
+ * Get a human-readable description for a tool
+ */
+function getToolDescription(toolName: string, input: Record<string, unknown>): string {
+  switch (toolName) {
+    case 'list_dir':
+      return `Exploring directory: ${input['path'] || '/'}`
+    case 'read_file':
+      return `Reading file: ${input['path']}`
+    case 'search_code':
+      return `Searching for: "${input['pattern']}" in ${input['path'] || 'codebase'}`
+    case 'get_imports':
+      return `Analyzing imports in: ${input['path']}`
+    default:
+      return `Executing ${toolName}`
+  }
+}
+
+/**
+ * Summarize tool result for streaming
+ */
+function summarizeToolResult(toolName: string, result: ToolResult): string {
+  if (result.error) {
+    return `Error: ${result.error}`
+  }
+
+  switch (toolName) {
+    case 'list_dir': {
+      const output = result.output as { files?: string[]; directories?: string[] }
+      const fileCount = output.files?.length || 0
+      const dirCount = output.directories?.length || 0
+      return `Found ${fileCount} files and ${dirCount} directories`
+    }
+    case 'read_file': {
+      const output = result.output as { content?: string; lineCount?: number }
+      return `Read ${output.lineCount || 'unknown'} lines`
+    }
+    case 'search_code': {
+      const output = result.output as { matches?: unknown[] }
+      return `Found ${output.matches?.length || 0} matches`
+    }
+    case 'get_imports': {
+      const output = result.output as { imports?: string[] }
+      return `Found ${output.imports?.length || 0} imports`
+    }
+    default:
+      return 'Completed'
+  }
+}
 
 /**
  * Agent Orchestrator Service
@@ -248,14 +325,31 @@ export class AgentOrchestrator {
   async analyzeTask(
     taskId: string,
     userId: string,
-    onProgress?: AgentProgressCallback
+    onProgress?: AgentProgressCallback,
+    streaming?: StreamingOptions
   ): Promise<{ result: AnalysisResult; stats: AgentStats; logs: ToolResult[] }> {
     const startTime = Date.now()
     const toolLogs: ToolResult[] = []
     let totalInputTokens = 0
     let totalOutputTokens = 0
+    let analysisId: string | undefined
+
+    // Helper to emit stream events
+    const emit = (event: StreamEvent) => {
+      streaming?.onStreamEvent?.(event)
+    }
+
+    // Emit initial phase
+    emit(createStreamEvent('phase', {
+      phase: 'initializing',
+      message: 'Starting analysis...',
+    }))
 
     onProgress?.('loading', 'Loading task and project data...', {})
+    emit(createStreamEvent('phase', {
+      phase: 'loading',
+      message: 'Loading task and project data...',
+    }))
 
     // Load task with project context
     const task = await db.task.findUnique({
@@ -334,6 +428,11 @@ export class AgentOrchestrator {
     const tools = getAnthropicTools()
 
     onProgress?.('analyzing', 'Starting analysis...', { iterations: 0, toolCalls: 0 })
+    emit(createStreamEvent('phase', {
+      phase: 'analyzing',
+      message: 'AI is analyzing the codebase...',
+      analysisId,
+    }))
 
     let iterations = 0
 
@@ -345,6 +444,15 @@ export class AgentOrchestrator {
         iterations,
         toolCalls: toolLogs.length,
       })
+
+      // Emit progress event
+      emit(createStreamEvent('progress', {
+        iteration: iterations,
+        toolCalls: toolLogs.length,
+        tokensUsed: { input: totalInputTokens, output: totalOutputTokens },
+        durationMs: Date.now() - startTime,
+        analysisId,
+      }))
 
       // Call Claude
       const response = await this.client.messages.create({
@@ -377,6 +485,21 @@ export class AgentOrchestrator {
           tokensUsed: { input: totalInputTokens, output: totalOutputTokens },
         })
 
+        emit(createStreamEvent('phase', {
+          phase: 'parsing',
+          message: 'Processing analysis results...',
+          analysisId,
+        }))
+
+        // Emit thinking content if enabled
+        if (streaming?.includeThinking) {
+          emit(createStreamEvent('thinking', {
+            content: textContent.text.substring(0, 500) + (textContent.text.length > 500 ? '...' : ''),
+            isPartial: textContent.text.length > 500,
+            analysisId,
+          }))
+        }
+
         // Parse the result
         const result = this.parseAnalysisResult(textContent.text)
 
@@ -387,7 +510,43 @@ export class AgentOrchestrator {
           durationMs: Date.now() - startTime,
         }
 
+        // Emit file discovered events
+        for (const file of result.filesToCreate) {
+          emit(createStreamEvent('file_discovered', {
+            action: 'create',
+            path: file.path,
+            description: file.description,
+            analysisId,
+          }))
+        }
+        for (const file of result.filesToModify) {
+          emit(createStreamEvent('file_discovered', {
+            action: 'modify',
+            path: file.path,
+            analysisId,
+          }))
+        }
+
         onProgress?.('complete', 'Analysis complete', stats)
+
+        emit(createStreamEvent('phase', {
+          phase: 'complete',
+          message: 'Analysis complete',
+          analysisId,
+        }))
+
+        emit(createStreamEvent('result', {
+          analysisId: analysisId || '',
+          summary: result.summary,
+          stats: {
+            iterations: stats.iterations,
+            toolCalls: stats.toolCalls,
+            tokensUsed: stats.tokensUsed,
+            durationMs: stats.durationMs,
+            filesToCreate: result.filesToCreate.length,
+            filesToModify: result.filesToModify.length,
+          },
+        }))
 
         return { result, stats, logs: toolLogs }
       }
@@ -408,11 +567,28 @@ export class AgentOrchestrator {
         const toolResults: ToolResultBlockParam[] = []
 
         for (const toolUse of toolUseBlocks) {
+          const toolInput = toolUse.input as Record<string, unknown>
+
           onProgress?.('tool', `Executing ${toolUse.name}...`, {
             iterations,
             toolCalls: toolLogs.length + 1,
           })
 
+          // Emit tool_call event
+          emit(createStreamEvent('tool_call', {
+            tool: toolUse.name,
+            input: toolInput,
+            description: getToolDescription(toolUse.name, toolInput),
+            analysisId,
+          }))
+
+          emit(createStreamEvent('phase', {
+            phase: 'tool_execution',
+            message: getToolDescription(toolUse.name, toolInput),
+            analysisId,
+          }))
+
+          const toolStartTime = Date.now()
           const toolResult = await executeTool(
             toolUse.name as ToolName,
             toolUse.input,
@@ -420,6 +596,17 @@ export class AgentOrchestrator {
           )
 
           toolLogs.push(toolResult)
+
+          // Emit tool_result event
+          if (streaming?.includeToolResults !== false) {
+            emit(createStreamEvent('tool_result', {
+              tool: toolUse.name,
+              success: !toolResult.error,
+              summary: summarizeToolResult(toolUse.name, toolResult),
+              durationMs: Date.now() - toolStartTime,
+              analysisId,
+            }))
+          }
 
           // Format result for Claude
           const formattedResult = toolResult.error
@@ -785,8 +972,9 @@ export async function runAgentAnalysis(
   taskId: string,
   userId: string,
   config?: Partial<OrchestratorConfig>,
-  onProgress?: AgentProgressCallback
+  onProgress?: AgentProgressCallback,
+  streaming?: StreamingOptions
 ): Promise<{ result: AnalysisResult; stats: AgentStats; logs: ToolResult[] }> {
   const orchestrator = new AgentOrchestrator(config)
-  return orchestrator.analyzeTask(taskId, userId, onProgress)
+  return orchestrator.analyzeTask(taskId, userId, onProgress, streaming)
 }
