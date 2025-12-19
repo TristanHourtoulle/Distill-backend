@@ -29,11 +29,23 @@ Indicates the current analysis phase.
 interface PhaseEvent {
   type: 'phase'
   timestamp: number
-  phase: 'initializing' | 'loading' | 'exploring' | 'analyzing' | 'tool_execution' | 'parsing' | 'saving' | 'complete' | 'error'
+  phase: 'initializing' | 'loading' | 'exploring' | 'analyzing' | 'tool_execution' | 'synthesizing' | 'parsing' | 'saving' | 'complete' | 'error'
   message: string
   analysisId?: string
 }
 ```
+
+**Phase descriptions:**
+- `initializing` - Starting the analysis
+- `loading` - Loading task and project data from database
+- `exploring` - AI is exploring the codebase structure
+- `analyzing` - AI is analyzing code and reasoning
+- `tool_execution` - Executing a specific tool (list_dir, read_file, etc.)
+- `synthesizing` - AI has finished exploring and is preparing its final response
+- `parsing` - Processing the AI's response into structured data
+- `saving` - Saving results to database
+- `complete` - Analysis finished successfully
+- `error` - An error occurred
 
 ### `tool_call`
 Emitted when the AI calls a tool to explore the codebase.
