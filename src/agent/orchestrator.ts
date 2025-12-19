@@ -42,12 +42,24 @@ export interface AnalysisResult {
     }>
   }>
 
-  // Functions/Components to create
+  // Functions/Components to create (enhanced with input/output examples)
   functionsToCreate: Array<{
     name: string
     signature: string
     description: string
-    location: string
+    location: string // Legacy field
+    file?: string | undefined
+    lineToInsert?: string | undefined
+    implementation?: string | undefined
+    inputExample?: {
+      description: string
+      value: string
+    }
+    outputExample?: {
+      description: string
+      value: string
+    }
+    whyThisApproach?: string | undefined
   }>
 
   // Implementation steps
@@ -60,24 +72,44 @@ export interface AnalysisResult {
     codeExample?: string | undefined
   }>
 
-  // Edge cases
+  // Edge cases (enhanced with input/implementation)
   edgeCases: Array<{
     scenario: string
     expectedBehavior: string
+    input?: string | undefined
+    implementation?: string | undefined
   }>
 
-  // Testing
+  // Testing (legacy field)
   testingInstructions: Array<{
     type: 'unit' | 'integration' | 'manual'
     description: string
     steps: string[]
   }>
 
-  // Risks
+  // Test cases (new enhanced field)
+  testCases?: Array<{
+    name: string
+    type: 'unit' | 'integration' | 'e2e'
+    file?: string | undefined
+    testCode?: string | undefined
+    assertion?: string | undefined
+    steps?: string[] | undefined
+  }>
+
+  // Code quality checks
+  codeQualityChecks?: Array<{
+    check: string
+    command: string
+    expectedResult: string
+  }>
+
+  // Risks (enhanced with affected files)
   risks: Array<{
     description: string
     severity: 'low' | 'medium' | 'high'
     mitigation: string
+    affectedFiles?: string[] | undefined
   }>
 
   // Dependencies
@@ -98,9 +130,10 @@ export interface AnalysisResult {
     requiresDocumentation: boolean
   }
 
-  // Bug-specific fields (optional)
+  // Bug-specific fields (optional, enhanced)
   bugAnalysis?: {
     rootCause: string
+    rootCauseExplanation?: string | undefined
     problematicCode?: {
       file: string
       lines: string
@@ -110,29 +143,41 @@ export interface AnalysisResult {
   }
   fix?: {
     approach: string
+    whyThisApproach?: string | undefined
     codeDiff?: {
       before: string
       after: string
     }
+    alternatives?: Array<{
+      approach: string
+      whyNotChosen: string
+    }>
   }
   regressionRisks?: Array<{
     area: string
     mitigation: string
+    testToAdd?: string | undefined
   }>
 
-  // Modification-specific fields (optional)
+  // Modification-specific fields (optional, enhanced)
   currentState?: string
   targetState?: string
   impactAnalysis?: {
-    directlyAffected: string[]
-    potentiallyAffected: string[]
+    directlyAffected: string[] | Array<{ file: string; lines?: string; reason: string }>
+    potentiallyAffected: string[] | Array<{ file: string; reason: string }>
     noChangeNeeded: string[]
   }
   backwardsCompatibility?: {
     isCompatible: boolean
     breakingChanges: string[]
     migrationRequired: boolean
+    migrationSteps?: string[] | undefined
   }
+  beforeAfterExamples?: Array<{
+    scenario: string
+    before: string
+    after: string
+  }>
 
   // Legacy fields for backwards compatibility
   testingRecommendations?: string[]
@@ -600,24 +645,71 @@ export class AgentOrchestrator {
         filesToCreate: parsed.filesToCreate || [],
         filesToModify: parsed.filesToModify || [],
 
-        // Functions
-        functionsToCreate: parsed.functionsToCreate || [],
+        // Functions (enhanced with input/output examples)
+        functionsToCreate: (parsed.functionsToCreate || []).map(f => {
+          const result: {
+            name: string
+            signature: string
+            description: string
+            location: string
+            file?: string
+            lineToInsert?: string
+            implementation?: string
+            inputExample?: { description: string; value: string }
+            outputExample?: { description: string; value: string }
+            whyThisApproach?: string
+          } = {
+            name: f.name,
+            signature: f.signature,
+            description: f.description,
+            location: f.location || f.file || '',
+          }
+          if (f.file) result.file = f.file
+          if (f.lineToInsert) result.lineToInsert = f.lineToInsert
+          if (f.implementation) result.implementation = f.implementation
+          if (f.inputExample) result.inputExample = f.inputExample
+          if (f.outputExample) result.outputExample = f.outputExample
+          if (f.whyThisApproach) result.whyThisApproach = f.whyThisApproach
+          return result
+        }),
 
         // Implementation
         implementationSteps: parsed.implementationSteps || [],
 
-        // Edge cases
-        edgeCases: parsed.edgeCases || [],
+        // Edge cases (enhanced with input/implementation)
+        edgeCases: (parsed.edgeCases || []).map(e => {
+          const result: {
+            scenario: string
+            expectedBehavior: string
+            input?: string
+            implementation?: string
+          } = {
+            scenario: e.scenario,
+            expectedBehavior: e.expectedBehavior,
+          }
+          if (e.input) result.input = e.input
+          if (e.implementation) result.implementation = e.implementation
+          return result
+        }),
 
-        // Testing
+        // Testing (legacy)
         testingInstructions: parsed.testingInstructions || [],
 
-        // Risks
-        risks: (parsed.risks || []).map(r => ({
-          description: r.description,
-          severity: r.severity || 'medium',
-          mitigation: r.mitigation,
-        })),
+        // Risks (enhanced with affected files)
+        risks: (parsed.risks || []).map(r => {
+          const result: {
+            description: string
+            severity: 'low' | 'medium' | 'high'
+            mitigation: string
+            affectedFiles?: string[]
+          } = {
+            description: r.description,
+            severity: r.severity || 'medium',
+            mitigation: r.mitigation,
+          }
+          if (r.affectedFiles) result.affectedFiles = r.affectedFiles
+          return result
+        }),
 
         // Dependencies
         dependencies: parsed.dependencies || [],
@@ -635,19 +727,18 @@ export class AgentOrchestrator {
           requiresDocumentation: false,
         },
 
-        // Bug-specific (optional)
-        bugAnalysis: parsed.bugAnalysis,
-        fix: parsed.fix,
-        regressionRisks: parsed.regressionRisks,
-
-        // Modification-specific (optional)
-        currentState: parsed.currentState,
-        targetState: parsed.targetState,
-        impactAnalysis: parsed.impactAnalysis,
-        backwardsCompatibility: parsed.backwardsCompatibility,
-
-        // Legacy
-        testingRecommendations: parsed.testingRecommendations,
+        // Optional fields - only include if present
+        ...(parsed.testCases && { testCases: parsed.testCases }),
+        ...(parsed.codeQualityChecks && { codeQualityChecks: parsed.codeQualityChecks }),
+        ...(parsed.bugAnalysis && { bugAnalysis: parsed.bugAnalysis }),
+        ...(parsed.fix && { fix: parsed.fix }),
+        ...(parsed.regressionRisks && { regressionRisks: parsed.regressionRisks }),
+        ...(parsed.currentState && { currentState: parsed.currentState }),
+        ...(parsed.targetState && { targetState: parsed.targetState }),
+        ...(parsed.impactAnalysis && { impactAnalysis: parsed.impactAnalysis }),
+        ...(parsed.backwardsCompatibility && { backwardsCompatibility: parsed.backwardsCompatibility }),
+        ...(parsed.beforeAfterExamples && { beforeAfterExamples: parsed.beforeAfterExamples }),
+        ...(parsed.testingRecommendations && { testingRecommendations: parsed.testingRecommendations }),
       }
     } catch (parseError) {
       // If JSON parsing fails, log the error and return fallback

@@ -137,25 +137,32 @@ function getOutputTemplateForTaskType(taskType: string): string {
   const baseStructure = `
 ## Output Format
 
-After your analysis, provide a structured response in JSON format. The structure varies based on the task type.
+After your analysis, provide a structured response in JSON format. **Your analysis must be SPECIFIC to this project** - use real file paths, actual types from the codebase, and concrete line numbers.
+
+**CRITICAL REQUIREMENTS:**
+- ALL file paths must be REAL paths from the codebase you explored
+- ALL line numbers must be ACTUAL line numbers from files you read
+- ALL code examples must use REAL types/interfaces from this project
+- NEVER use placeholder values like "undefined", "~L45-60", or generic examples
+- If you couldn't find a specific location, explain why and suggest where to look
 
 \`\`\`json
 {
   "taskType": "${taskType}",
   "summary": "Brief summary of your analysis and approach",
-  "context": "Why this task is needed and what problem it solves",
+  "context": "Why this task is needed and what problem it solves in THIS project",
   "expectedBehavior": "Detailed description of what the implementation should do",
 
   "acceptanceCriteria": [
-    "Specific, testable criterion 1",
-    "Specific, testable criterion 2"
+    "Specific, testable criterion that a developer can verify",
+    "Example: 'The formatPrice() function returns '12 EUR' when given 12.00 and 'EUR'"
   ],
 
   "filesToCreate": [
     {
       "path": "src/path/to/NewFile.tsx",
       "description": "What this file should contain and its purpose",
-      "suggestedCode": "// Optional: suggested code structure or template"
+      "suggestedCode": "// Complete implementation example using project types"
     }
   ],
 
@@ -164,12 +171,12 @@ After your analysis, provide a structured response in JSON format. The structure
       "path": "src/path/to/existing.ts",
       "changes": [
         {
-          "location": "~L45-60 or function name",
+          "location": "L45-60 (inside calculateTotal function)",
           "action": "add|modify|remove",
           "description": "What needs to change",
-          "reason": "Why this change is needed",
-          "beforeCode": "// Current code (if modifying)",
-          "afterCode": "// Suggested new code"
+          "reason": "Why this change is needed - the technical justification",
+          "beforeCode": "// ACTUAL current code from the file",
+          "afterCode": "// Proposed new code with the change"
         }
       ]
     }
@@ -178,9 +185,20 @@ After your analysis, provide a structured response in JSON format. The structure
   "functionsToCreate": [
     {
       "name": "functionName",
-      "signature": "function name(param: Type): ReturnType",
-      "description": "What this function does",
-      "location": "src/path/to/file.ts"
+      "file": "src/path/to/file.ts",
+      "lineToInsert": "L45 (after the imports)",
+      "signature": "function name(param: ProjectSpecificType): ReturnType",
+      "description": "What this function does and why it's needed",
+      "implementation": "// Quick implementation showing the approach",
+      "inputExample": {
+        "description": "Example input based on project types",
+        "value": "{ id: 'abc123', price: 99.99, currency: 'EUR' }"
+      },
+      "outputExample": {
+        "description": "Expected output for the given input",
+        "value": "'100 EUR'"
+      },
+      "whyThisApproach": "Explanation of why this implementation approach was chosen over alternatives"
     }
   ],
 
@@ -189,24 +207,63 @@ After your analysis, provide a structured response in JSON format. The structure
       "order": 1,
       "title": "Short title for this step",
       "description": "Detailed description of what to do",
-      "rationale": "Why this step is needed",
-      "files": ["src/file1.ts", "src/file2.ts"],
-      "codeExample": "// Optional code example"
+      "rationale": "Why this step is needed and why in this order",
+      "files": ["src/file1.ts:L45", "src/file2.ts:L120"],
+      "codeExample": "// Concrete code example for this step"
     }
   ],
 
   "edgeCases": [
     {
-      "scenario": "Description of the edge case",
-      "expectedBehavior": "How it should be handled"
+      "scenario": "What happens when price is 0?",
+      "input": "formatPrice(0, 'EUR')",
+      "expectedBehavior": "Returns '0 EUR' (not empty string)",
+      "implementation": "Add check: if (price === 0) return '0 ' + currency"
+    },
+    {
+      "scenario": "What happens with negative prices?",
+      "input": "formatPrice(-50, 'EUR')",
+      "expectedBehavior": "Returns '-50 EUR' (preserve sign)",
+      "implementation": "No special handling needed, Math.ceil preserves sign"
     }
   ],
 
-  "testingInstructions": [
+  "testCases": [
     {
-      "type": "unit|integration|manual",
-      "description": "Test description",
-      "steps": ["Step 1", "Step 2"]
+      "name": "should round price up to nearest integer",
+      "type": "unit",
+      "file": "src/__tests__/pricing.test.ts",
+      "testCode": "expect(formatPrice(12.01, 'EUR')).toBe('13 EUR')",
+      "assertion": "Price 12.01 should be rounded up to 13"
+    },
+    {
+      "name": "should handle zero price",
+      "type": "unit",
+      "file": "src/__tests__/pricing.test.ts",
+      "testCode": "expect(formatPrice(0, 'EUR')).toBe('0 EUR')",
+      "assertion": "Zero should display as '0 EUR' not empty"
+    },
+    {
+      "name": "integration: verify price displays correctly on Project page",
+      "type": "integration",
+      "steps": [
+        "Navigate to /project/123",
+        "Check the price section shows rounded prices",
+        "Verify format matches '13 EUR' pattern"
+      ]
+    }
+  ],
+
+  "codeQualityChecks": [
+    {
+      "check": "TypeScript compilation",
+      "command": "pnpm tsc --noEmit",
+      "expectedResult": "No errors"
+    },
+    {
+      "check": "Linting",
+      "command": "pnpm lint",
+      "expectedResult": "No new warnings"
     }
   ],
 
@@ -214,7 +271,8 @@ After your analysis, provide a structured response in JSON format. The structure
     {
       "description": "Potential risk or issue",
       "severity": "low|medium|high",
-      "mitigation": "How to avoid or handle it"
+      "mitigation": "How to avoid or handle it",
+      "affectedFiles": ["src/file1.ts", "src/file2.ts"]
     }
   ],
 
@@ -235,7 +293,27 @@ After your analysis, provide a structured response in JSON format. The structure
     "requiresDocumentation": false
   }
 }
-\`\`\``
+\`\`\`
+
+**IMPORTANT FIELD REQUIREMENTS:**
+
+1. **functionsToCreate**: Each function MUST include:
+   - \`inputExample\`: A concrete example of what the function receives (using project types)
+   - \`outputExample\`: What the function returns for that input
+   - \`whyThisApproach\`: Technical justification for the implementation choice
+
+2. **edgeCases**: Each edge case MUST include:
+   - \`input\`: The actual input that triggers this edge case
+   - \`expectedBehavior\`: What should happen
+   - \`implementation\`: How to handle it in code
+
+3. **testCases**: Each test MUST include:
+   - \`testCode\`: The actual test assertion code
+   - Real file paths where the test should be added
+
+4. **filesToModify.changes.location**: MUST be in format "L{start}-{end} (context)"
+   - Example: "L45-52 (inside the calculateTotal function)"
+   - NEVER use "undefined" or approximate locations`
 
   // Add type-specific guidance
   if (taskType === 'bugfix') {
@@ -251,24 +329,33 @@ For bug fixes, also include:
     "problematicCode": {
       "file": "src/path/to/file.ts",
       "lines": "L45-50",
-      "code": "// The code causing the bug"
+      "code": "// The ACTUAL code causing the bug (copied from file)"
     },
     "reproductionSteps": [
       "Step 1 to reproduce",
       "Step 2 to reproduce"
-    ]
+    ],
+    "rootCauseExplanation": "Detailed explanation of WHY this code causes the bug"
   },
   "fix": {
     "approach": "Description of the fix approach",
+    "whyThisApproach": "Why this fix is better than alternatives",
     "codeDiff": {
-      "before": "// Code before fix",
-      "after": "// Code after fix"
-    }
+      "before": "// ACTUAL code before fix",
+      "after": "// Proposed code after fix"
+    },
+    "alternatives": [
+      {
+        "approach": "Alternative fix approach",
+        "whyNotChosen": "Reason this wasn't selected"
+      }
+    ]
   },
   "regressionRisks": [
     {
       "area": "What could break",
-      "mitigation": "How to prevent it"
+      "mitigation": "How to prevent it",
+      "testToAdd": "Test case to catch this regression"
     }
   ]
 }
@@ -283,18 +370,37 @@ For bug fixes, also include:
 For modifications, also include:
 \`\`\`json
 {
-  "currentState": "How the code currently works",
-  "targetState": "How it should work after modification",
+  "currentState": "How the code currently works (with specific examples)",
+  "targetState": "How it should work after modification (with specific examples)",
   "impactAnalysis": {
-    "directlyAffected": ["File or component 1", "File or component 2"],
-    "potentiallyAffected": ["File that might need changes"],
+    "directlyAffected": [
+      {
+        "file": "src/path/to/file.ts",
+        "lines": "L45-60",
+        "reason": "Why this file needs changes"
+      }
+    ],
+    "potentiallyAffected": [
+      {
+        "file": "src/path/to/other.ts",
+        "reason": "Might need changes if X"
+      }
+    ],
     "noChangeNeeded": ["Files reviewed but don't need changes"]
   },
   "backwardsCompatibility": {
     "isCompatible": true,
     "breakingChanges": [],
-    "migrationRequired": false
-  }
+    "migrationRequired": false,
+    "migrationSteps": []
+  },
+  "beforeAfterExamples": [
+    {
+      "scenario": "When user does X",
+      "before": "Current behavior: shows Y",
+      "after": "New behavior: shows Z"
+    }
+  ]
 }
 \`\`\``
   }

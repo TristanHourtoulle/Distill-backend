@@ -44,6 +44,18 @@ interface AnalysisFunctionToCreate {
   signature: string
   description: string
   location: string
+  file?: string
+  lineToInsert?: string
+  implementation?: string
+  inputExample?: {
+    description: string
+    value: string
+  }
+  outputExample?: {
+    description: string
+    value: string
+  }
+  whyThisApproach?: string
 }
 
 interface AnalysisStep {
@@ -58,6 +70,23 @@ interface AnalysisStep {
 interface AnalysisEdgeCase {
   scenario: string
   expectedBehavior: string
+  input?: string
+  implementation?: string
+}
+
+interface AnalysisTestCase {
+  name: string
+  type: 'unit' | 'integration' | 'e2e'
+  file?: string
+  testCode?: string
+  assertion?: string
+  steps?: string[]
+}
+
+interface AnalysisCodeQualityCheck {
+  check: string
+  command: string
+  expectedResult: string
 }
 
 interface AnalysisTestInstruction {
@@ -87,6 +116,7 @@ interface AnalysisMetadata {
 
 interface AnalysisBugInfo {
   rootCause?: string
+  rootCauseExplanation?: string
   problematicCode?: {
     file: string
     lines: string
@@ -97,21 +127,33 @@ interface AnalysisBugInfo {
 
 interface AnalysisFix {
   approach?: string
+  whyThisApproach?: string
   codeDiff?: {
     before: string
     after: string
   }
+  alternatives?: Array<{
+    approach: string
+    whyNotChosen: string
+  }>
 }
 
 interface AnalysisRegressionRisk {
   area: string
   mitigation: string
+  testToAdd?: string
 }
 
 interface AnalysisImpact {
-  directlyAffected?: string[]
-  potentiallyAffected?: string[]
+  directlyAffected?: string[] | Array<{ file: string; lines?: string; reason: string }>
+  potentiallyAffected?: string[] | Array<{ file: string; reason: string }>
   noChangeNeeded?: string[]
+}
+
+interface AnalysisBeforeAfterExample {
+  scenario: string
+  before: string
+  after: string
 }
 
 interface AnalysisBackwardsCompat {
@@ -418,6 +460,8 @@ export class ExportService {
       functionsToCreate?: unknown
       edgeCases?: unknown
       testingInstructions?: unknown
+      testCases?: unknown
+      codeQualityChecks?: unknown
       breakingChanges?: unknown
       metadata?: unknown
       // Bug-specific
@@ -429,6 +473,7 @@ export class ExportService {
       targetState?: unknown
       impactAnalysis?: unknown
       backwardsCompatibility?: unknown
+      beforeAfterExamples?: unknown
     }
   ): string {
     const sections: string[] = []
@@ -536,17 +581,55 @@ export class ExportService {
       sections.push(modifySection)
     }
 
-    // Functions/Components to Create
+    // Functions/Components to Create (Enhanced with input/output examples)
     const functionsToCreate = (analysis['functionsToCreate'] as AnalysisFunctionToCreate[] | null) ?? []
     if (functionsToCreate.length > 0) {
       let funcSection = '### Functions / Components to Create\n\n'
-      funcSection += '```typescript\n'
+
       for (const func of functionsToCreate) {
-        funcSection += `// ${func.description}\n`
-        funcSection += `// Location: ${func.location}\n`
-        funcSection += `${func.signature}\n\n`
+        const location = func.file || func.location
+        const insertAt = func.lineToInsert ? ` at ${func.lineToInsert}` : ''
+
+        funcSection += `#### \`${func.name}\`\n\n`
+        funcSection += `**Location:** \`${location}\`${insertAt}\n\n`
+        funcSection += `**Description:** ${func.description}\n\n`
+
+        // Signature
+        funcSection += '```typescript\n'
+        funcSection += `${func.signature}\n`
+        funcSection += '```\n\n'
+
+        // Implementation example (if provided)
+        if (func.implementation) {
+          funcSection += '**Implementation:**\n\n'
+          funcSection += '```typescript\n'
+          funcSection += `${func.implementation}\n`
+          funcSection += '```\n\n'
+        }
+
+        // Input/Output examples (enhanced)
+        if (func.inputExample || func.outputExample) {
+          funcSection += '**Example:**\n\n'
+          funcSection += '| Input | Output |\n|-------|--------|\n'
+          const inputVal = func.inputExample?.value || '-'
+          const outputVal = func.outputExample?.value || '-'
+          funcSection += `| \`${inputVal}\` | \`${outputVal}\` |\n\n`
+
+          if (func.inputExample?.description) {
+            funcSection += `*Input:* ${func.inputExample.description}\n\n`
+          }
+          if (func.outputExample?.description) {
+            funcSection += `*Output:* ${func.outputExample.description}\n\n`
+          }
+        }
+
+        // Why this approach
+        if (func.whyThisApproach) {
+          funcSection += `**Why this approach:** ${func.whyThisApproach}\n\n`
+        }
+
+        funcSection += '---\n\n'
       }
-      funcSection += '```'
       sections.push(funcSection)
     }
 
@@ -572,18 +655,36 @@ export class ExportService {
       sections.push(stepsSection)
     }
 
-    // Edge Cases
+    // Edge Cases (Enhanced with input and implementation)
     const edgeCases = (analysis['edgeCases'] as AnalysisEdgeCase[] | null) ?? []
     if (edgeCases.length > 0) {
       let edgeSection = '---\n\n## ⚠️ Edge Cases to Handle\n\n'
-      edgeSection += '| Scenario | Expected Behavior |\n|----------|------------------|\n'
-      for (const edge of edgeCases) {
-        edgeSection += `| ${edge.scenario} | ${edge.expectedBehavior} |\n`
+
+      // Check if we have enhanced edge cases with input/implementation
+      const hasEnhanced = edgeCases.some(e => e.input || e.implementation)
+
+      if (hasEnhanced) {
+        for (const edge of edgeCases) {
+          edgeSection += `### ${edge.scenario}\n\n`
+          if (edge.input) {
+            edgeSection += `**Input:** \`${edge.input}\`\n\n`
+          }
+          edgeSection += `**Expected behavior:** ${edge.expectedBehavior}\n\n`
+          if (edge.implementation) {
+            edgeSection += `**Implementation:**\n\`\`\`typescript\n${edge.implementation}\n\`\`\`\n\n`
+          }
+        }
+      } else {
+        // Fallback to simple table format
+        edgeSection += '| Scenario | Expected Behavior |\n|----------|------------------|\n'
+        for (const edge of edgeCases) {
+          edgeSection += `| ${edge.scenario} | ${edge.expectedBehavior} |\n`
+        }
       }
       sections.push(edgeSection)
     }
 
-    // Testing Instructions
+    // Testing Instructions (legacy format)
     const testingInstructions = (analysis['testingInstructions'] as AnalysisTestInstruction[] | null) ?? []
     if (testingInstructions.length > 0) {
       let testSection = '---\n\n## 🧪 Testing\n\n'
@@ -596,6 +697,82 @@ export class ExportService {
         testSection += '\n'
       }
       sections.push(testSection)
+    }
+
+    // Test Cases (enhanced with actual test code)
+    const testCases = (analysis['testCases'] as AnalysisTestCase[] | null) ?? []
+    if (testCases.length > 0) {
+      let testCaseSection = testingInstructions.length === 0 ? '---\n\n## 🧪 Test Cases\n\n' : '### Specific Test Cases\n\n'
+
+      // Group by type
+      const unitTests = testCases.filter(t => t.type === 'unit')
+      const integrationTests = testCases.filter(t => t.type === 'integration')
+      const e2eTests = testCases.filter(t => t.type === 'e2e')
+
+      if (unitTests.length > 0) {
+        testCaseSection += '#### 🔬 Unit Tests\n\n'
+        for (const test of unitTests) {
+          testCaseSection += `**${test.name}**\n`
+          if (test.file) {
+            testCaseSection += `*File:* \`${test.file}\`\n\n`
+          }
+          if (test.testCode) {
+            testCaseSection += '```typescript\n'
+            testCaseSection += `${test.testCode}\n`
+            testCaseSection += '```\n\n'
+          }
+          if (test.assertion) {
+            testCaseSection += `*Assertion:* ${test.assertion}\n\n`
+          }
+        }
+      }
+
+      if (integrationTests.length > 0) {
+        testCaseSection += '#### 🔗 Integration Tests\n\n'
+        for (const test of integrationTests) {
+          testCaseSection += `**${test.name}**\n`
+          if (test.file) {
+            testCaseSection += `*File:* \`${test.file}\`\n\n`
+          }
+          if (test.steps && test.steps.length > 0) {
+            for (let i = 0; i < test.steps.length; i++) {
+              testCaseSection += `${i + 1}. ${test.steps[i]}\n`
+            }
+            testCaseSection += '\n'
+          }
+          if (test.testCode) {
+            testCaseSection += '```typescript\n'
+            testCaseSection += `${test.testCode}\n`
+            testCaseSection += '```\n\n'
+          }
+        }
+      }
+
+      if (e2eTests.length > 0) {
+        testCaseSection += '#### 🎯 E2E Tests\n\n'
+        for (const test of e2eTests) {
+          testCaseSection += `**${test.name}**\n\n`
+          if (test.steps && test.steps.length > 0) {
+            for (let i = 0; i < test.steps.length; i++) {
+              testCaseSection += `${i + 1}. ${test.steps[i]}\n`
+            }
+            testCaseSection += '\n'
+          }
+        }
+      }
+
+      sections.push(testCaseSection)
+    }
+
+    // Code Quality Checks
+    const codeQualityChecks = (analysis['codeQualityChecks'] as AnalysisCodeQualityCheck[] | null) ?? []
+    if (codeQualityChecks.length > 0) {
+      let qualitySection = '---\n\n## ✅ Code Quality Checks\n\n'
+      qualitySection += '| Check | Command | Expected |\n|-------|---------|----------|\n'
+      for (const check of codeQualityChecks) {
+        qualitySection += `| ${check.check} | \`${check.command}\` | ${check.expectedResult} |\n`
+      }
+      sections.push(qualitySection)
     }
 
     // Risks
@@ -667,12 +844,15 @@ export class ExportService {
       sections.push(`### Expected Behavior\n${expectedBehavior}`)
     }
 
-    // Bug Analysis
+    // Bug Analysis (Enhanced)
     const bugAnalysis = analysis['bugAnalysis'] as AnalysisBugInfo | undefined
     if (bugAnalysis) {
       let bugSection = '---\n\n## 🔍 Root Cause Analysis\n\n'
       if (bugAnalysis.rootCause) {
         bugSection += `### Origin\n${bugAnalysis.rootCause}\n\n`
+      }
+      if (bugAnalysis.rootCauseExplanation) {
+        bugSection += `### Technical Explanation\n${bugAnalysis.rootCauseExplanation}\n\n`
       }
       if (bugAnalysis.problematicCode) {
         bugSection += `### Problematic Code\n\n`
@@ -688,12 +868,15 @@ export class ExportService {
       sections.push(bugSection)
     }
 
-    // Proposed Fix
+    // Proposed Fix (Enhanced with why and alternatives)
     const fix = analysis['fix'] as AnalysisFix | undefined
     if (fix) {
       let fixSection = '---\n\n## 🔧 Proposed Fix\n\n'
       if (fix.approach) {
         fixSection += `### Approach\n${fix.approach}\n\n`
+      }
+      if (fix.whyThisApproach) {
+        fixSection += `**Why this approach:** ${fix.whyThisApproach}\n\n`
       }
       if (fix.codeDiff) {
         fixSection += `### Code Changes\n\n\`\`\`diff\n`
@@ -704,6 +887,12 @@ export class ExportService {
           fixSection += `+ ${fix.codeDiff.after.split('\n').join('\n+ ')}\n`
         }
         fixSection += `\`\`\`\n`
+      }
+      if (fix.alternatives && fix.alternatives.length > 0) {
+        fixSection += `\n### Alternatives Considered\n\n`
+        for (const alt of fix.alternatives) {
+          fixSection += `- **${alt.approach}**\n  - *Why not chosen:* ${alt.whyNotChosen}\n`
+        }
       }
       sections.push(fixSection)
     }
@@ -721,12 +910,16 @@ export class ExportService {
       sections.push(modifySection)
     }
 
-    // Regression Risks
+    // Regression Risks (Enhanced with test to add)
     const regressionRisks = (analysis['regressionRisks'] as AnalysisRegressionRisk[] | null) ?? []
     if (regressionRisks.length > 0) {
       let regressionSection = '---\n\n## ⚠️ Regression Risks\n\n'
       for (const risk of regressionRisks) {
-        regressionSection += `- [ ] **${risk.area}**\n  - Mitigation: ${risk.mitigation}\n`
+        regressionSection += `- [ ] **${risk.area}**\n`
+        regressionSection += `  - *Mitigation:* ${risk.mitigation}\n`
+        if (risk.testToAdd) {
+          regressionSection += `  - *Test to add:* \`${risk.testToAdd}\`\n`
+        }
       }
       sections.push(regressionSection)
     }
@@ -795,6 +988,18 @@ export class ExportService {
       sections.push(stateSection)
     }
 
+    // Before/After Examples (Enhanced)
+    const beforeAfterExamples = (analysis['beforeAfterExamples'] as AnalysisBeforeAfterExample[] | null) ?? []
+    if (beforeAfterExamples.length > 0) {
+      let examplesSection = '### Before/After Examples\n\n'
+      for (const example of beforeAfterExamples) {
+        examplesSection += `**${example.scenario}**\n\n`
+        examplesSection += `| Before | After |\n|--------|-------|\n`
+        examplesSection += `| ${example.before} | ${example.after} |\n\n`
+      }
+      sections.push(examplesSection)
+    }
+
     // Objectives/Acceptance Criteria
     const acceptanceCriteria = (analysis['acceptanceCriteria'] as string[] | null) ?? []
     if (acceptanceCriteria.length > 0) {
@@ -830,25 +1035,67 @@ export class ExportService {
       sections.push(modifySection)
     }
 
-    // Impact Analysis
+    // Impact Analysis (Enhanced with reasons)
     const impactAnalysis = analysis['impactAnalysis'] as AnalysisImpact | undefined
     if (impactAnalysis) {
       let impactSection = '---\n\n## 🔗 Impact Analysis\n\n'
-      impactSection += '| File | Impact | Action Required |\n|------|--------|----------------|\n'
 
-      if (impactAnalysis.directlyAffected) {
-        for (const file of impactAnalysis.directlyAffected) {
-          impactSection += `| \`${file}\` | Direct | ✅ Must update |\n`
+      // Check if we have enhanced format (objects with reason) or simple format (strings)
+      const hasEnhancedFormat = impactAnalysis.directlyAffected?.some(
+        item => typeof item === 'object' && item !== null
+      )
+
+      if (hasEnhancedFormat) {
+        // Enhanced format with detailed info
+        if (impactAnalysis.directlyAffected && impactAnalysis.directlyAffected.length > 0) {
+          impactSection += '### ✅ Directly Affected (Must Update)\n\n'
+          for (const item of impactAnalysis.directlyAffected) {
+            if (typeof item === 'object' && item !== null) {
+              const lines = item.lines ? ` (${item.lines})` : ''
+              impactSection += `- **\`${item.file}\`**${lines}\n  - *Reason:* ${item.reason}\n`
+            } else {
+              impactSection += `- \`${item}\`\n`
+            }
+          }
+          impactSection += '\n'
         }
-      }
-      if (impactAnalysis.potentiallyAffected) {
-        for (const file of impactAnalysis.potentiallyAffected) {
-          impactSection += `| \`${file}\` | Potential | ⚠️ Verify |\n`
+        if (impactAnalysis.potentiallyAffected && impactAnalysis.potentiallyAffected.length > 0) {
+          impactSection += '### ⚠️ Potentially Affected (Verify)\n\n'
+          for (const item of impactAnalysis.potentiallyAffected) {
+            if (typeof item === 'object' && item !== null) {
+              impactSection += `- **\`${item.file}\`**\n  - *Reason:* ${item.reason}\n`
+            } else {
+              impactSection += `- \`${item}\`\n`
+            }
+          }
+          impactSection += '\n'
         }
-      }
-      if (impactAnalysis.noChangeNeeded) {
-        for (const file of impactAnalysis.noChangeNeeded) {
-          impactSection += `| \`${file}\` | None | ✓ No change |\n`
+        if (impactAnalysis.noChangeNeeded && impactAnalysis.noChangeNeeded.length > 0) {
+          impactSection += '### ✓ No Change Needed\n\n'
+          for (const file of impactAnalysis.noChangeNeeded) {
+            impactSection += `- \`${file}\`\n`
+          }
+        }
+      } else {
+        // Simple table format (backwards compatible)
+        impactSection += '| File | Impact | Action Required |\n|------|--------|----------------|\n'
+
+        if (impactAnalysis.directlyAffected) {
+          for (const file of impactAnalysis.directlyAffected) {
+            const fileName = typeof file === 'string' ? file : (file as { file: string }).file
+            impactSection += `| \`${fileName}\` | Direct | ✅ Must update |\n`
+          }
+        }
+        if (impactAnalysis.potentiallyAffected) {
+          for (const file of impactAnalysis.potentiallyAffected) {
+            const fileName = typeof file === 'string' ? file : (file as { file: string }).file
+            impactSection += `| \`${fileName}\` | Potential | ⚠️ Verify |\n`
+          }
+        }
+        if (impactAnalysis.noChangeNeeded) {
+          for (const file of impactAnalysis.noChangeNeeded) {
+            impactSection += `| \`${file}\` | None | ✓ No change |\n`
+          }
         }
       }
       sections.push(impactSection)
