@@ -262,7 +262,7 @@ function getToolDescription(toolName: string, input: Record<string, unknown>): s
     case 'read_file':
       return `Reading file: ${input['path']}`
     case 'search_code':
-      return `Searching for: "${input['pattern']}" in ${input['path'] || 'codebase'}`
+      return `Searching for: "${input['query']}" in codebase`
     case 'get_imports':
       return `Analyzing imports in: ${input['path']}`
     default:
@@ -280,18 +280,26 @@ function summarizeToolResult(toolName: string, result: ToolResult): string {
 
   switch (toolName) {
     case 'list_dir': {
-      const output = result.output as { files?: string[]; directories?: string[] }
-      const fileCount = output.files?.length || 0
-      const dirCount = output.directories?.length || 0
+      // list_dir returns { path, entries: FileEntry[], truncated }
+      const output = result.output as { entries?: Array<{ type: string }> }
+      const entries = output.entries || []
+      const fileCount = entries.filter(e => e.type === 'file').length
+      const dirCount = entries.filter(e => e.type === 'directory').length
       return `Found ${fileCount} files and ${dirCount} directories`
     }
     case 'read_file': {
-      const output = result.output as { content?: string; lineCount?: number }
+      // read_file returns formatted string with line count
+      const output = result.output as string | { content?: string; lineCount?: number }
+      if (typeof output === 'string') {
+        const lineMatch = output.match(/\((\d+) lines?\)/)
+        return lineMatch ? `Read ${lineMatch[1]} lines` : 'File read'
+      }
       return `Read ${output.lineCount || 'unknown'} lines`
     }
     case 'search_code': {
-      const output = result.output as { matches?: unknown[] }
-      return `Found ${output.matches?.length || 0} matches`
+      // search_code returns { query, results, totalMatches, truncated }
+      const output = result.output as { results?: unknown[]; totalMatches?: number }
+      return `Found ${output.totalMatches || output.results?.length || 0} matches`
     }
     case 'get_imports': {
       const output = result.output as { imports?: string[] }
@@ -470,6 +478,14 @@ export class AgentOrchestrator {
 
       // Check stop reason
       if (response.stop_reason === 'end_turn') {
+        // Emit synthesizing phase - AI has finished exploring, now preparing final response
+        console.log('[Agent] Emitting synthesizing phase - AI finished exploring, preparing final response')
+        emit(createStreamEvent('phase', {
+          phase: 'synthesizing',
+          message: 'Codebase exploration complete. Synthesizing findings into implementation plan...',
+          analysisId,
+        }))
+
         // Extract final response
         const textContent = response.content.find(
           (block): block is TextBlock => block.type === 'text'
@@ -569,6 +585,9 @@ export class AgentOrchestrator {
         for (const toolUse of toolUseBlocks) {
           const toolInput = toolUse.input as Record<string, unknown>
 
+          console.log(`\n[Agent] Tool call: ${toolUse.name}`)
+          console.log(`[Agent] Input:`, JSON.stringify(toolInput, null, 2))
+
           onProgress?.('tool', `Executing ${toolUse.name}...`, {
             iterations,
             toolCalls: toolLogs.length + 1,
@@ -595,6 +614,14 @@ export class AgentOrchestrator {
             agentContext
           )
 
+          const toolDuration = Date.now() - toolStartTime
+          console.log(`[Agent] Tool result (${toolDuration}ms):`)
+          if (toolResult.error) {
+            console.log(`[Agent] Error: ${toolResult.error}`)
+          } else {
+            console.log(`[Agent] Output:`, JSON.stringify(toolResult.output, null, 2).substring(0, 1000))
+          }
+
           toolLogs.push(toolResult)
 
           // Emit tool_result event
@@ -603,7 +630,7 @@ export class AgentOrchestrator {
               tool: toolUse.name,
               success: !toolResult.error,
               summary: summarizeToolResult(toolUse.name, toolResult),
-              durationMs: Date.now() - toolStartTime,
+              durationMs: toolDuration,
               analysisId,
             }))
           }

@@ -5,6 +5,8 @@ import { authMiddleware } from '../middlewares/auth.middleware.js'
 import { AnalysisService } from '../services/analysis.service.js'
 import { createSSEResponse, SSEWriter, createKeepAlive } from '../lib/sse.js'
 import type { StreamEvent } from '../types/streaming.types.js'
+import { db } from '../lib/db.js'
+import { NotFoundError, ForbiddenError, ValidationError } from '../lib/errors.js'
 
 const app = new Hono()
 
@@ -84,6 +86,30 @@ app.get('/analyze/:taskId/stream', zValidator('param', taskIdSchema), async (c) 
   const includeToolResults = c.req.query('includeToolResults') !== 'false'
   const includeThinking = c.req.query('includeThinking') === 'true'
 
+  // Pre-validate task BEFORE starting SSE stream to avoid infinite reconnection loops
+  // If validation fails, return a regular HTTP error (not SSE)
+  const task = await db.task.findUnique({
+    where: { id: taskId },
+    include: {
+      project: {
+        select: { userId: true },
+      },
+    },
+  })
+
+  if (!task) {
+    throw new NotFoundError('Task not found')
+  }
+
+  if (task.project.userId !== userId) {
+    throw new ForbiddenError('Access denied')
+  }
+
+  if (task.status === 'analyzing') {
+    throw new ValidationError('Task is already being analyzed')
+  }
+
+  // Task is valid, start SSE stream
   return createSSEResponse(async (writer: SSEWriter) => {
     // Set up keep-alive
     const stopKeepAlive = createKeepAlive(writer)
@@ -136,6 +162,50 @@ app.get('/analysis/:id', zValidator('param', analysisIdSchema), async (c) => {
   const analysis = await AnalysisService.getAnalysis(id, userId)
 
   return c.json({ data: analysis })
+})
+
+/**
+ * POST /agent/task/:taskId/reset
+ * Reset a stuck task (from 'analyzing' back to 'pending')
+ */
+app.post('/task/:taskId/reset', zValidator('param', taskIdSchema), async (c) => {
+  const userId = c.get('userId')
+  const { taskId } = c.req.valid('param')
+
+  const task = await db.task.findUnique({
+    where: { id: taskId },
+    include: {
+      project: {
+        select: { userId: true },
+      },
+    },
+  })
+
+  if (!task) {
+    throw new NotFoundError('Task not found')
+  }
+
+  if (task.project.userId !== userId) {
+    throw new ForbiddenError('Access denied')
+  }
+
+  if (task.status !== 'analyzing') {
+    return c.json({
+      data: { status: task.status },
+      message: 'Task is not stuck (not in analyzing state)',
+    })
+  }
+
+  const updated = await db.task.update({
+    where: { id: taskId },
+    data: { status: 'pending' },
+    select: { id: true, status: true },
+  })
+
+  return c.json({
+    data: updated,
+    message: 'Task reset to pending',
+  })
 })
 
 /**
